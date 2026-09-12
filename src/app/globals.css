@@ -1,0 +1,211 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-heading: var(--font-heading);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  /* Pit Wall flag-status semantic colors — shared by both themes */
+  --color-flag-green: var(--flag-green);
+  --color-flag-green-foreground: var(--flag-green-foreground);
+  --color-flag-yellow: var(--flag-yellow);
+  --color-flag-yellow-foreground: var(--flag-yellow-foreground);
+  --color-flag-red: var(--flag-red);
+  --color-flag-red-foreground: var(--flag-red-foreground);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * Pit Wall theme — dark ("carbon black") is the natural, primary mode for
+ * this app, not an inverted light theme. :root ships the dark palette by
+ * default; .light overrides it for the optional light mode. Brand colors
+ * (race red / yellow flag / success teal) are exact hex per spec; only
+ * neutral surfaces are hand-tuned tints of carbon black #15151E.
+ */
+:root {
+  /* Titillium Web for headings, Inter for UI copy, Noto Sans Thai fills in
+     Thai glyphs for both, JetBrains Mono for mileage/prices/odometer figures. */
+  --font-sans: var(--font-inter), var(--font-noto-sans-thai), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-heading: var(--font-titillium-web), var(--font-noto-sans-thai),
+    var(--font-sans);
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular",
+    monospace;
+
+  --background: #15151e;
+  --foreground: #f2f2f5;
+  --card: #1c1c28;
+  --card-foreground: #f2f2f5;
+  --popover: #1c1c28;
+  --popover-foreground: #f2f2f5;
+  --primary: #e10600;
+  --primary-foreground: #ffffff;
+  --secondary: #21212e;
+  --secondary-foreground: #e4e4ea;
+  --muted: #1d1d29;
+  --muted-foreground: #9a9aad;
+  --accent: #272734;
+  --accent-foreground: #f2f2f5;
+  --destructive: #e10600;
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 14%);
+  --ring: #00d2be;
+  --chart-1: #e10600;
+  --chart-2: #00d2be;
+  --chart-3: #ffd700;
+  --chart-4: #8a8aa3;
+  --chart-5: #4a4a5c;
+  --radius: 0.625rem;
+  --sidebar: #101018;
+  --sidebar-foreground: #f2f2f5;
+  --sidebar-primary: #e10600;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1d1d29;
+  --sidebar-accent-foreground: #f2f2f5;
+  --sidebar-border: rgb(255 255 255 / 8%);
+  --sidebar-ring: #00d2be;
+  /* Flag system: green(ok) / yellow(due soon) / red(overdue) */
+  --flag-green: #00d2be;
+  --flag-green-foreground: #04201d;
+  --flag-yellow: #ffd700;
+  --flag-yellow-foreground: #2b2400;
+  --flag-red: #e10600;
+  --flag-red-foreground: #ffffff;
+}
+
+.light {
+  --background: #f7f7f9;
+  --foreground: #15151e;
+  --card: #ffffff;
+  --card-foreground: #15151e;
+  --popover: #ffffff;
+  --popover-foreground: #15151e;
+  --primary: #e10600;
+  --primary-foreground: #ffffff;
+  --secondary: #ededf2;
+  --secondary-foreground: #15151e;
+  --muted: #ededf2;
+  --muted-foreground: #64647a;
+  --accent: #e4e4ec;
+  --accent-foreground: #15151e;
+  --destructive: #e10600;
+  --border: #dcdce4;
+  --input: #dcdce4;
+  --ring: #00a396;
+  --chart-1: #e10600;
+  --chart-2: #00a396;
+  --chart-3: #b38f00;
+  --chart-4: #64647a;
+  --chart-5: #a0a0b5;
+  --sidebar: #efeff4;
+  --sidebar-foreground: #15151e;
+  --sidebar-primary: #e10600;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e4e4ec;
+  --sidebar-accent-foreground: #15151e;
+  --sidebar-border: #dcdce4;
+  --sidebar-ring: #00a396;
+  --flag-green: #00a396;
+  --flag-green-foreground: #ffffff;
+  --flag-yellow: #b38f00;
+  --flag-yellow-foreground: #ffffff;
+  --flag-red: #e10600;
+  --flag-red-foreground: #ffffff;
+}
+
+/* Kept for compatibility with tooling/components that toggle `.dark`
+   explicitly — it simply re-asserts the (already-default) dark palette. */
+.dark {
+  --background: #15151e;
+  --foreground: #f2f2f5;
+  --card: #1c1c28;
+  --card-foreground: #f2f2f5;
+  --popover: #1c1c28;
+  --popover-foreground: #f2f2f5;
+  --primary: #e10600;
+  --primary-foreground: #ffffff;
+  --secondary: #21212e;
+  --secondary-foreground: #e4e4ea;
+  --muted: #1d1d29;
+  --muted-foreground: #9a9aad;
+  --accent: #272734;
+  --accent-foreground: #f2f2f5;
+  --destructive: #e10600;
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 14%);
+  --ring: #00d2be;
+  --chart-1: #e10600;
+  --chart-2: #00d2be;
+  --chart-3: #ffd700;
+  --chart-4: #8a8aa3;
+  --chart-5: #4a4a5c;
+  --sidebar: #101018;
+  --sidebar-foreground: #f2f2f5;
+  --sidebar-primary: #e10600;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1d1d29;
+  --sidebar-accent-foreground: #f2f2f5;
+  --sidebar-border: rgb(255 255 255 / 8%);
+  --sidebar-ring: #00d2be;
+  --flag-green: #00d2be;
+  --flag-green-foreground: #04201d;
+  --flag-yellow: #ffd700;
+  --flag-yellow-foreground: #2b2400;
+  --flag-red: #e10600;
+  --flag-red-foreground: #ffffff;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+}

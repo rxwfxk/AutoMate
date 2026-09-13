@@ -88,10 +88,6 @@ export function AppSidebar({
         })}
       </nav>
 
-      <div className={cn("p-4 pt-0", collapsed && "flex justify-center px-2")}>
-        <SignOutButton className={collapsed ? undefined : "w-full"} iconOnly={collapsed} />
-      </div>
-
       <div
         className={cn(
           "flex items-center gap-2.5 border-t border-border p-4",
@@ -108,6 +104,10 @@ export function AppSidebar({
             <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
           </div>
         )}
+      </div>
+
+      <div className={cn("p-4 pt-0", collapsed && "flex justify-center px-2")}>
+        <SignOutButton className={collapsed ? undefined : "w-full"} iconOnly={collapsed} />
       </div>
     </div>
   );

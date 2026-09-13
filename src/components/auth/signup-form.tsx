@@ -52,6 +52,10 @@ export function SignupForm() {
       password: values.password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/confirm`,
+        data: {
+          first_name: values.firstName,
+          last_name: values.lastName,
+        },
       },
     });
 
@@ -84,6 +88,23 @@ export function SignupForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="firstName">ชื่อ</Label>
+          <Input id="firstName" autoComplete="given-name" placeholder="สมชาย" {...register("firstName")} />
+          {errors.firstName && (
+            <p className="text-sm text-flag-red">{errors.firstName.message}</p>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="lastName">นามสกุล</Label>
+          <Input id="lastName" autoComplete="family-name" placeholder="ใจดี" {...register("lastName")} />
+          {errors.lastName && (
+            <p className="text-sm text-flag-red">{errors.lastName.message}</p>
+          )}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="email">อีเมล</Label>
         <Input

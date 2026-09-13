@@ -9,6 +9,8 @@ export type LoginInput = z.infer<typeof loginSchema>;
 
 export const signupSchema = z
   .object({
+    firstName: z.string().min(1, "กรุณากรอกชื่อ").max(100),
+    lastName: z.string().min(1, "กรุณากรอกนามสกุล").max(100),
     email: z.string().min(1, "กรุณากรอกอีเมล").email("รูปแบบอีเมลไม่ถูกต้อง"),
     password: z
       .string()

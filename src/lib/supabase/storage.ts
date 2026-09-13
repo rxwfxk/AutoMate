@@ -2,45 +2,71 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 
 const VEHICLE_IMAGES_BUCKET = "vehicle-images";
+const MAINTENANCE_RECEIPTS_BUCKET = "maintenance-receipts";
 
-/**
- * Uploads a vehicle photo to `${userId}/${vehicleId}-${timestamp}.${ext}` so
- * the storage RLS policies (scoped to the first path segment == auth.uid())
- * apply, and returns its public URL.
- */
-export async function uploadVehicleImage(
+/** Uploads to `${userId}/${entityId}-${timestamp}.${ext}` so the storage RLS
+ * policies (scoped to the first path segment == auth.uid()) apply, and
+ * returns the public URL. */
+async function uploadToBucket(
   supabase: SupabaseClient<Database>,
+  bucket: string,
   userId: string,
-  vehicleId: string,
+  entityId: string,
   file: File,
 ): Promise<string> {
   const ext = file.name.split(".").pop() ?? "jpg";
-  const path = `${userId}/${vehicleId}-${Date.now()}.${ext}`;
+  const path = `${userId}/${entityId}-${Date.now()}.${ext}`;
 
   const { error } = await supabase.storage
-    .from(VEHICLE_IMAGES_BUCKET)
+    .from(bucket)
     .upload(path, file, { contentType: file.type, upsert: false });
-
   if (error) throw error;
 
   const {
     data: { publicUrl },
-  } = supabase.storage.from(VEHICLE_IMAGES_BUCKET).getPublicUrl(path);
+  } = supabase.storage.from(bucket).getPublicUrl(path);
 
   return publicUrl;
 }
 
 /** Best-effort delete — failures are logged, not thrown, since a missing
  * storage object should never block a DB write the user is waiting on. */
-export async function deleteVehicleImageByUrl(
+async function deleteFromBucketByUrl(
   supabase: SupabaseClient<Database>,
-  imageUrl: string,
+  bucket: string,
+  fileUrl: string,
 ): Promise<void> {
-  const marker = `/${VEHICLE_IMAGES_BUCKET}/`;
-  const index = imageUrl.indexOf(marker);
+  const marker = `/${bucket}/`;
+  const index = fileUrl.indexOf(marker);
   if (index === -1) return;
 
-  const path = imageUrl.slice(index + marker.length);
-  const { error } = await supabase.storage.from(VEHICLE_IMAGES_BUCKET).remove([path]);
-  if (error) console.error("Failed to delete vehicle image:", path, error.message);
+  const path = fileUrl.slice(index + marker.length);
+  const { error } = await supabase.storage.from(bucket).remove([path]);
+  if (error) console.error(`Failed to delete file from ${bucket}:`, path, error.message);
+}
+
+export function uploadVehicleImage(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  vehicleId: string,
+  file: File,
+) {
+  return uploadToBucket(supabase, VEHICLE_IMAGES_BUCKET, userId, vehicleId, file);
+}
+
+export function deleteVehicleImageByUrl(supabase: SupabaseClient<Database>, imageUrl: string) {
+  return deleteFromBucketByUrl(supabase, VEHICLE_IMAGES_BUCKET, imageUrl);
+}
+
+export function uploadReceiptImage(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  maintenanceLogId: string,
+  file: File,
+) {
+  return uploadToBucket(supabase, MAINTENANCE_RECEIPTS_BUCKET, userId, maintenanceLogId, file);
+}
+
+export function deleteReceiptImageByUrl(supabase: SupabaseClient<Database>, fileUrl: string) {
+  return deleteFromBucketByUrl(supabase, MAINTENANCE_RECEIPTS_BUCKET, fileUrl);
 }

@@ -9,7 +9,7 @@ import type { Vehicle } from "@/types/database.types";
 export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <div className="relative aspect-video w-full bg-muted">
+      <Link href={`/vehicles/${vehicle.id}`} className="relative aspect-video w-full bg-muted">
         {vehicle.image_url ? (
           <Image
             src={vehicle.image_url}
@@ -23,11 +23,15 @@ export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
             <Bike className="size-10 text-muted-foreground" />
           </div>
         )}
-      </div>
+      </Link>
 
       <div className="flex flex-1 flex-col gap-1 p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-heading font-semibold leading-tight">{vehicle.name}</h3>
+          <Link href={`/vehicles/${vehicle.id}`} className="min-w-0">
+            <h3 className="truncate font-heading font-semibold leading-tight hover:underline">
+              {vehicle.name}
+            </h3>
+          </Link>
           <div className="flex shrink-0 items-center gap-1">
             <Button variant="ghost" size="icon-sm" aria-label={`แก้ไข ${vehicle.name}`} render={
               <Link href={`/vehicles/${vehicle.id}/edit`} />

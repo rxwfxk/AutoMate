@@ -18,3 +18,7 @@ export function getInitials(user: User | null | undefined): string {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
+
+export function getAvatarUrl(user: User | null | undefined): string | undefined {
+  return user?.user_metadata?.avatar_url as string | undefined;
+}

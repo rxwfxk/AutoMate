@@ -3,6 +3,7 @@ import type { Database } from "@/types/database.types";
 
 const VEHICLE_IMAGES_BUCKET = "vehicle-images";
 const MAINTENANCE_RECEIPTS_BUCKET = "maintenance-receipts";
+const PROFILE_AVATARS_BUCKET = "profile-avatars";
 
 /** Uploads to `${userId}/${entityId}-${timestamp}.${ext}` so the storage RLS
  * policies (scoped to the first path segment == auth.uid()) apply, and
@@ -69,4 +70,16 @@ export function uploadReceiptImage(
 
 export function deleteReceiptImageByUrl(supabase: SupabaseClient<Database>, fileUrl: string) {
   return deleteFromBucketByUrl(supabase, MAINTENANCE_RECEIPTS_BUCKET, fileUrl);
+}
+
+export function uploadAvatarImage(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  file: File,
+) {
+  return uploadToBucket(supabase, PROFILE_AVATARS_BUCKET, userId, "avatar", file);
+}
+
+export function deleteAvatarImageByUrl(supabase: SupabaseClient<Database>, fileUrl: string) {
+  return deleteFromBucketByUrl(supabase, PROFILE_AVATARS_BUCKET, fileUrl);
 }

@@ -7,7 +7,13 @@ import { LogOut, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
-export function SignOutButton({ className }: { className?: string }) {
+export function SignOutButton({
+  className,
+  iconOnly = false,
+}: {
+  className?: string;
+  iconOnly?: boolean;
+}) {
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -20,9 +26,17 @@ export function SignOutButton({ className }: { className?: string }) {
   }
 
   return (
-    <Button variant="outline" className={className} onClick={handleSignOut} disabled={isSigningOut}>
+    <Button
+      variant="outline"
+      size={iconOnly ? "icon" : "default"}
+      className={className}
+      onClick={handleSignOut}
+      disabled={isSigningOut}
+      aria-label={iconOnly ? "ออกจากระบบ" : undefined}
+      title={iconOnly ? "ออกจากระบบ" : undefined}
+    >
       {isSigningOut ? <Loader2 className="animate-spin" /> : <LogOut />}
-      ออกจากระบบ
+      {!iconOnly && "ออกจากระบบ"}
     </Button>
   );
 }

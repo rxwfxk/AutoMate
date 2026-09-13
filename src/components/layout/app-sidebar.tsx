@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import { Bike, Gauge, Home, UserRound } from "lucide-react";
+import { Bike, Gauge, Home, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 
 import { cn } from "cn";
-import { getDisplayName, getInitials } from "@/lib/user-display";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getAvatarUrl, getDisplayName, getInitials } from "@/lib/user-display";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 
 const NAV_ITEMS = [
@@ -22,25 +23,47 @@ function isNavItemActive(pathname: string, href: string) {
 
 export function AppSidebar({
   user,
+  collapsed = false,
+  onToggleCollapsed,
   onNavigate,
 }: {
   user: User | null;
+  /** Only meaningful on the desktop rail — the mobile drawer is always expanded. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 p-4">
-        <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+      <div
+        className={cn(
+          "flex items-center gap-2 p-4",
+          collapsed && "flex-col justify-center gap-3 px-2",
+        )}
+      >
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Gauge className="size-4" />
         </div>
-        <span className="font-heading text-sm font-semibold tracking-tight">
-          Vehicle Maintenance Log
-        </span>
+        {!collapsed && (
+          <span className="min-w-0 flex-1 truncate font-heading text-sm font-semibold tracking-tight">
+            Vehicle Maintenance Log
+          </span>
+        )}
+        {onToggleCollapsed && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? "ขยาย sidebar" : "ยุบ sidebar"}
+          >
+            {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+          </Button>
+        )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 p-2">
+      <nav className={cn("flex flex-1 flex-col gap-1 p-2", collapsed && "items-center")}>
         {NAV_ITEMS.map((item) => {
           const active = isNavItemActive(pathname, item.href);
           const Icon = item.icon;
@@ -49,31 +72,42 @@ export function AppSidebar({
               key={item.href}
               href={item.href}
               onClick={onNavigate}
+              title={collapsed ? item.label : undefined}
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                collapsed && "w-9 justify-center px-0",
                 active
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
-              <Icon className="size-4" />
-              {item.label}
+              <Icon className="size-4 shrink-0" />
+              {!collapsed && item.label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="flex items-center gap-2.5 border-t border-border p-4">
-        <Avatar className="size-8">
+      <div className={cn("p-4 pt-0", collapsed && "flex justify-center px-2")}>
+        <SignOutButton className={collapsed ? undefined : "w-full"} iconOnly={collapsed} />
+      </div>
+
+      <div
+        className={cn(
+          "flex items-center gap-2.5 border-t border-border p-4",
+          collapsed && "justify-center px-2",
+        )}
+      >
+        <Avatar className="size-8 shrink-0">
+          <AvatarImage src={getAvatarUrl(user)} alt="" />
           <AvatarFallback className="text-xs">{getInitials(user)}</AvatarFallback>
         </Avatar>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{getDisplayName(user)}</p>
-          <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
-        </div>
-      </div>
-      <div className="p-4 pt-0">
-        <SignOutButton className="w-full" />
+        {!collapsed && (
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{getDisplayName(user)}</p>
+            <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+          </div>
+        )}
       </div>
     </div>
   );

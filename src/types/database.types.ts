@@ -1,10 +1,12 @@
-// Hand-written to match supabase/migrations/0001_init_schema.sql.
+// Hand-written to match supabase/migrations/0001_init_schema.sql +
+// 0002_vehicle_images_storage.sql.
 //
 // Once the Supabase project is linked, regenerate the authoritative version
 // with:
 //   npx supabase gen types typescript --project-id <ref> > src/types/database.types.ts
-// The shape below follows the same convention the CLI generates, so callers
-// (e.g. `createClient<Database>()`) do not need to change either way.
+// The shape below follows the same convention the CLI generates (including
+// `Relationships`/`Views`/`Functions`, required by @supabase/postgrest-js's
+// generic constraints), so callers do not need to change either way.
 
 export type DocumentType =
   | "compulsory_insurance"
@@ -45,6 +47,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["vehicles"]["Insert"]>;
+        Relationships: [];
       };
       maintenance_types: {
         Row: {
@@ -64,6 +67,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["maintenance_types"]["Insert"]>;
+        Relationships: [];
       };
       maintenance_logs: {
         Row: {
@@ -97,6 +101,20 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["maintenance_logs"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_logs_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "maintenance_logs_maintenance_type_id_fkey";
+            columns: ["maintenance_type_id"];
+            referencedRelation: "maintenance_types";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       documents: {
         Row: {
@@ -124,6 +142,14 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["documents"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "documents_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       notification_settings: {
         Row: {
@@ -145,8 +171,11 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["notification_settings"]["Insert"]>;
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
   };
 }
 

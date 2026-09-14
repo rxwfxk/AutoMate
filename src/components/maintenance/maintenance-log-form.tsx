@@ -66,6 +66,9 @@ export function MaintenanceLogForm({
           notes: log.notes ?? "",
         }
       : {
+          // Give the Select a defined value from the first render — Base UI
+          // warns if it flips from uncontrolled (undefined) to controlled.
+          maintenance_type_id: "",
           service_date: new Date().toISOString().slice(0, 10),
           mileage_at_service: defaultMileage,
         },
@@ -95,7 +98,7 @@ export function MaintenanceLogForm({
     formData.set("maintenance_type_id", values.maintenance_type_id);
     formData.set("service_date", values.service_date);
     formData.set("mileage_at_service", String(values.mileage_at_service));
-    if (values.cost !== undefined) formData.set("cost", String(values.cost));
+    formData.set("cost", values.cost !== undefined ? String(values.cost) : "");
     formData.set("shop_name", values.shop_name ?? "");
     formData.set("notes", values.notes ?? "");
     if (receiptFile) formData.set("receipt", receiptFile);

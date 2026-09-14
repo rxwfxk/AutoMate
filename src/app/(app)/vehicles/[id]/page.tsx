@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Bike, Pencil, Plus, Wrench } from "lucide-react";
+import { Bike, FileText, Pencil, Plus, Wrench } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
   MaintenanceLogItem,
   type MaintenanceLogWithType,
 } from "@/components/maintenance/maintenance-log-item";
+import { DocumentItem } from "@/components/documents/document-item";
 
 export default async function VehicleDetailPage({
   params,
@@ -27,6 +28,12 @@ export default async function VehicleDetailPage({
     .select("*, maintenance_types(name, icon, default_interval_km)")
     .eq("vehicle_id", id)
     .order("service_date", { ascending: false });
+
+  const { data: documents } = await supabase
+    .from("documents")
+    .select("*")
+    .eq("vehicle_id", id)
+    .order("expiry_date", { ascending: true });
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-4 sm:p-6">
@@ -107,6 +114,42 @@ export default async function VehicleDetailPage({
           >
             <Plus />
             เพิ่มบันทึกแรก
+          </Link>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <h2 className="font-heading text-lg font-semibold tracking-tight">เอกสาร</h2>
+        <Link
+          href={`/vehicles/${vehicle.id}/documents/new`}
+          className={buttonVariants({ className: "gap-1.5" })}
+        >
+          <Plus />
+          เพิ่มเอกสาร
+        </Link>
+      </div>
+
+      {documents && documents.length > 0 ? (
+        <div className="flex flex-col gap-3">
+          {documents.map((document) => (
+            <DocumentItem
+              key={document.id}
+              document={document}
+              editHref={`/vehicles/${vehicle.id}/documents/${document.id}/edit`}
+              revalidateTarget={`/vehicles/${vehicle.id}`}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border py-16 text-center">
+          <FileText className="size-10 text-muted-foreground" />
+          <p className="text-muted-foreground">ยังไม่มีเอกสาร (พ.ร.บ., ประกัน, ภาษี)</p>
+          <Link
+            href={`/vehicles/${vehicle.id}/documents/new`}
+            className={buttonVariants({ className: "gap-1.5" })}
+          >
+            <Plus />
+            เพิ่มเอกสารแรก
           </Link>
         </div>
       )}

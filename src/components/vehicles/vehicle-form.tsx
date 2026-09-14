@@ -68,7 +68,7 @@ export function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
     formData.set("name", values.name);
     formData.set("brand", values.brand);
     formData.set("model", values.model);
-    if (values.year !== undefined) formData.set("year", String(values.year));
+    formData.set("year", values.year !== undefined ? String(values.year) : "");
     formData.set("license_plate", values.license_plate ?? "");
     formData.set("current_mileage", String(values.current_mileage));
     if (imageFile) formData.set("image", imageFile);

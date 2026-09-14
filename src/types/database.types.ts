@@ -8,11 +8,8 @@
 // `Relationships`/`Views`/`Functions`, required by @supabase/postgrest-js's
 // generic constraints), so callers do not need to change either way.
 
-export type DocumentType =
-  | "compulsory_insurance"
-  | "voluntary_insurance"
-  | "tax"
-  | "driving_license";
+export type VehicleDocumentType = "compulsory_insurance" | "voluntary_insurance" | "tax";
+export type DocumentType = VehicleDocumentType | "driving_license";
 
 export type NotifyVia = "email";
 
@@ -119,7 +116,10 @@ export interface Database {
       documents: {
         Row: {
           id: string;
-          vehicle_id: string;
+          /** Set for vehicle-scoped docs (insurance/tax); null for driving_license. */
+          vehicle_id: string | null;
+          /** Set only for driving_license (global per-user, at most one row — see migration 0005). */
+          user_id: string | null;
           document_type: DocumentType;
           issue_date: string | null;
           expiry_date: string;
@@ -131,7 +131,8 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          vehicle_id: string;
+          vehicle_id?: string | null;
+          user_id?: string | null;
           document_type: DocumentType;
           issue_date?: string | null;
           expiry_date: string;

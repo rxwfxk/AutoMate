@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Bike, Pencil } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { DeleteVehicleDialog } from "@/components/vehicles/delete-vehicle-dialog";
 import type { Vehicle } from "@/types/database.types";
 
@@ -33,11 +33,13 @@ export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
             </h3>
           </Link>
           <div className="flex shrink-0 items-center gap-1">
-            <Button variant="ghost" size="icon-sm" aria-label={`แก้ไข ${vehicle.name}`} render={
-              <Link href={`/vehicles/${vehicle.id}/edit`} />
-            }>
+            <Link
+              href={`/vehicles/${vehicle.id}/edit`}
+              className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+              aria-label={`แก้ไข ${vehicle.name}`}
+            >
               <Pencil />
-            </Button>
+            </Link>
             <DeleteVehicleDialog vehicleId={vehicle.id} vehicleName={vehicle.name} />
           </div>
         </div>

@@ -4,7 +4,7 @@ import { Pencil } from "lucide-react";
 import { getMaintenanceFlagStatus } from "@/lib/flag-status";
 import { getMaintenanceIcon } from "@/lib/maintenance-icons";
 import { FlagBadge } from "@/components/ui/flag-badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { DeleteMaintenanceLogDialog } from "@/components/maintenance/delete-maintenance-log-dialog";
 import type { MaintenanceLog, MaintenanceType } from "@/types/database.types";
 
@@ -91,14 +91,13 @@ export function MaintenanceLogItem({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon-sm"
+        <Link
+          href={`/vehicles/${vehicleId}/maintenance/${log.id}/edit`}
+          className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
           aria-label={`แก้ไขบันทึก ${type?.name ?? ""}`}
-          render={<Link href={`/vehicles/${vehicleId}/maintenance/${log.id}/edit`} />}
         >
           <Pencil />
-        </Button>
+        </Link>
         <DeleteMaintenanceLogDialog
           logId={log.id}
           vehicleId={vehicleId}

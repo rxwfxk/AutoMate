@@ -61,7 +61,7 @@ export default async function Home() {
   const vehicleNameById = new Map(vehicles.map((v) => [v.id, v.name]));
 
   const actionableCount = countActionableItems(logs, vehicleMileageById, documents);
-  const monthly = aggregateMonthlyExpenses(logs, documents, 6);
+  const monthly = aggregateMonthlyExpenses(logs, documents, 12);
   const yearly = aggregateYearlyExpenses(logs, documents);
   const thisMonth = monthly[monthly.length - 1];
   const thisMonthTotal = thisMonth.maintenance + thisMonth.documents;

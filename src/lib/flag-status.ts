@@ -17,7 +17,7 @@ const DEFAULT_WARNING_KM = 300;
 /** Warn once this fraction of the type's interval remains. */
 const WARNING_KM_FRACTION = 0.1;
 
-function worseFlag(a: FlagStatus, b: FlagStatus): FlagStatus {
+export function worseFlag(a: FlagStatus, b: FlagStatus): FlagStatus {
   const rank: Record<FlagStatus, number> = { green: 0, yellow: 1, red: 2 };
   return rank[a] >= rank[b] ? a : b;
 }

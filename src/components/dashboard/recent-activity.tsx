@@ -15,23 +15,27 @@ export function RecentActivity({
 
   if (recent.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+      <p className="rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
         ยังไม่มีประวัติการซ่อมบำรุง
       </p>
     );
   }
 
   return (
-    <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card">
-      {recent.map((log) => {
+    <div className="rounded-xl border border-border bg-card p-2">
+      {recent.map((log, index) => {
         const Icon = getMaintenanceIcon(log.maintenance_types?.icon ?? null);
+        const isLast = index === recent.length - 1;
         return (
           <Link
             key={log.id}
             href={`/vehicles/${log.vehicle_id}`}
-            className="flex items-center gap-3 p-3 transition-colors hover:bg-accent"
+            className="relative flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-accent"
           >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+            {!isLast && (
+              <span aria-hidden className="absolute top-10 bottom-[-4px] left-[23px] w-px bg-border" />
+            )}
+            <div className="relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted ring-4 ring-card">
               <Icon className="size-4 text-muted-foreground" />
             </div>
             <div className="min-w-0 flex-1">

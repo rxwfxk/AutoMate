@@ -16,36 +16,43 @@ export function VehicleOverviewCard({
   return (
     <Link
       href={`/vehicles/${vehicle.id}`}
-      className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent"
+      className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/40"
     >
-      <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+      <div className="relative aspect-video w-full bg-muted">
         {vehicle.image_url ? (
-          <Image src={vehicle.image_url} alt={vehicle.name} fill sizes="56px" className="object-cover" />
+          <Image
+            src={vehicle.image_url}
+            alt={vehicle.name}
+            fill
+            sizes="(min-width: 640px) 33vw, 100vw"
+            className="object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+          />
         ) : (
           <div className="flex size-full items-center justify-center">
-            <Bike className="size-6 text-muted-foreground" />
+            <Bike className="size-8 text-muted-foreground" />
           </div>
         )}
+        <div className="absolute top-2 right-2">
+          {status ? (
+            <FlagBadge status={status} className="bg-card/90 backdrop-blur-sm" />
+          ) : (
+            <span className="rounded-full bg-card/90 px-2.5 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+              ยังไม่มีข้อมูล
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{vehicle.name}</p>
+      <div className="flex flex-col gap-0.5 p-3.5">
+        <p className="truncate font-heading font-semibold leading-tight">{vehicle.name}</p>
         <p className="truncate text-xs text-muted-foreground">
           {vehicle.brand} {vehicle.model}
         </p>
-        <p className="font-mono text-sm">
+        <p className="mt-1 font-mono text-lg font-bold">
           {vehicle.current_mileage.toLocaleString("th-TH")}{" "}
           <span className="text-xs font-normal text-muted-foreground">กม.</span>
         </p>
       </div>
-
-      {status ? (
-        <FlagBadge status={status} className="shrink-0" />
-      ) : (
-        <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-          ยังไม่มีข้อมูล
-        </span>
-      )}
     </Link>
   );
 }

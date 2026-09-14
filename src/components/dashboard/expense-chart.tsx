@@ -46,16 +46,25 @@ function CustomTooltip({
       <div className="flex items-center gap-2">
         <span className="size-2 rounded-full" style={{ backgroundColor: MAINTENANCE_COLOR }} />
         <span className="text-muted-foreground">ซ่อมบำรุง</span>
-        <span className="ml-auto font-mono">฿{maintenance.toLocaleString("th-TH")}</span>
+        <span className="ml-auto">
+          <span className="font-sans">฿ </span>
+          <span className="font-mono">{maintenance.toLocaleString("th-TH")}</span>
+        </span>
       </div>
       <div className="flex items-center gap-2">
         <span className="size-2 rounded-full" style={{ backgroundColor: DOCUMENTS_COLOR }} />
         <span className="text-muted-foreground">เอกสาร</span>
-        <span className="ml-auto font-mono">฿{documents.toLocaleString("th-TH")}</span>
+        <span className="ml-auto">
+          <span className="font-sans">฿ </span>
+          <span className="font-mono">{documents.toLocaleString("th-TH")}</span>
+        </span>
       </div>
       <div className="mt-1.5 flex items-center gap-2 border-t border-border pt-1.5 font-medium">
         <span className="text-muted-foreground">รวม</span>
-        <span className="ml-auto font-mono">฿{total.toLocaleString("th-TH")}</span>
+        <span className="ml-auto">
+          <span className="font-sans">฿ </span>
+          <span className="font-mono">{total.toLocaleString("th-TH")}</span>
+        </span>
       </div>
     </div>
   );
@@ -71,10 +80,11 @@ export function ExpenseChart({
   const [view, setView] = useState<"monthly" | "yearly">("monthly");
   const data: Point[] = view === "monthly" ? monthly : yearly;
   const hasData = data.some((d) => d.maintenance > 0 || d.documents > 0);
+  const periodTotal = data.reduce((sum, d) => sum + d.maintenance + d.documents, 0);
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4 text-xs">
           <span className="flex items-center gap-1.5">
             <span className="size-2 rounded-full" style={{ backgroundColor: MAINTENANCE_COLOR }} />
@@ -104,6 +114,14 @@ export function ExpenseChart({
           </Button>
         </div>
       </div>
+
+      <p className="mb-3 text-2xl font-bold tracking-tight">
+        <span className="font-sans">฿ </span>
+        <span className="font-mono">{periodTotal.toLocaleString("th-TH")}</span>
+        <span className="ml-1.5 text-sm font-normal text-muted-foreground">
+          {view === "monthly" ? "12 เดือนล่าสุด" : "รวมทุกปี"}
+        </span>
+      </p>
 
       {hasData ? (
         <ResponsiveContainer width="100%" height={240}>

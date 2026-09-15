@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import type { User } from "@supabase/supabase-js";
-import { Bike, Gauge, Home, Menu, Moon, PanelLeftClose, Sun, UserRound } from "lucide-react";
+import { Bike, Gauge, Home, Menu, Moon, Sun, UserRound } from "lucide-react";
 
 import { cn } from "cn";
 import { getAvatarUrl, getDisplayName, getInitials } from "@/lib/user-display";
@@ -85,7 +85,7 @@ export function AppSidebar({
             onClick={onToggleCollapsed}
             aria-label="ยุบ sidebar"
           >
-            <PanelLeftClose />
+            <Menu />
           </Button>
         )}
       </div>

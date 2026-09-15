@@ -208,4 +208,14 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading;
   }
+
+  /* iOS Safari renders <input type="date"> with its own native widget font/
+     size for the date value, ignoring the input's own font-size — makes it
+     look noticeably bigger than sibling text/number inputs even though the
+     box itself is the same size. Dropping the native appearance makes it
+     render like a normal text input (tapping still opens the date picker). */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+  }
 }

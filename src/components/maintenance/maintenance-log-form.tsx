@@ -48,6 +48,9 @@ export function MaintenanceLogForm({
     log?.receipt_image_url ? "แนบไฟล์เดิมไว้แล้ว" : null,
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // See vehicle-form.tsx — guards against a double-click slipping past
+  // isSubmitting before React has re-rendered the disabled button.
+  const submittingRef = useRef(false);
 
   const {
     register,
@@ -110,8 +113,18 @@ export function MaintenanceLogForm({
     if (result?.error) setFormError(result.error);
   }
 
+  // Guard at the raw submit event, not inside onSubmit — see vehicle-form.tsx.
+  function guardedSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    void handleSubmit(onSubmit)(e).finally(() => {
+      submittingRef.current = false;
+    });
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+    <form onSubmit={guardedSubmit} className="flex flex-col gap-4" noValidate>
       <div className="flex flex-col gap-2">
         <Label htmlFor="maintenance_type_id">ประเภทงาน</Label>
         <Controller

@@ -44,6 +44,9 @@ export function VehicleDocumentForm({
     document?.file_url ? "แนบไฟล์เดิมไว้แล้ว" : null,
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // See vehicle-form.tsx — guards against a double-click slipping past
+  // isSubmitting before React has re-rendered the disabled button.
+  const submittingRef = useRef(false);
 
   const {
     register,
@@ -102,8 +105,18 @@ export function VehicleDocumentForm({
     if (result?.error) setFormError(result.error);
   }
 
+  // Guard at the raw submit event, not inside onSubmit — see vehicle-form.tsx.
+  function guardedSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    void handleSubmit(onSubmit)(e).finally(() => {
+      submittingRef.current = false;
+    });
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+    <form onSubmit={guardedSubmit} className="flex flex-col gap-4" noValidate>
       <div className="flex flex-col gap-2">
         <Label htmlFor="document_type">ประเภทเอกสาร</Label>
         <Controller

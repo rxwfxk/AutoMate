@@ -15,7 +15,7 @@ export function StatTile({
   tone?: "default" | "warning" | "danger";
 }) {
   return (
-    <div className="relative flex items-center gap-4 overflow-hidden rounded-xl border border-border bg-card py-4 pr-4 pl-5">
+    <div className="relative flex min-w-0 items-center gap-4 overflow-hidden rounded-xl border border-border bg-card py-4 pr-4 pl-5">
       <span
         aria-hidden
         className={cn(

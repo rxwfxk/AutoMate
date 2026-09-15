@@ -25,6 +25,10 @@ export function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(vehicle?.image_url ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // RHF's isSubmitting flips true only after this render commits, so a second
+  // click fired in the same tick as the first (before React disables the
+  // button) can still slip through — guard synchronously with a ref instead.
+  const submittingRef = useRef(false);
 
   const {
     register,
@@ -80,8 +84,22 @@ export function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
     if (result?.error) setFormError(result.error);
   }
 
+  // Guard at the raw submit event, not inside onSubmit — RHF's async
+  // validation runs before onSubmit is called, so a second click can still
+  // reach onSubmit after the first submission already finished and cleared
+  // an in-onSubmit guard. Checking here, before validation starts, closes
+  // that gap.
+  function guardedSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    void handleSubmit(onSubmit)(e).finally(() => {
+      submittingRef.current = false;
+    });
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+    <form onSubmit={guardedSubmit} className="flex flex-col gap-4" noValidate>
       <div className="flex flex-col items-center gap-3">
         {/* Plain <img>, not next/image — the pre-upload preview is a local
             blob: URL that image optimization can't serve. */}

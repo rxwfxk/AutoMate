@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import type { User } from "@supabase/supabase-js";
-import { Bike, Gauge, Home, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
+import { Bike, Gauge, Home, Moon, PanelLeftClose, PanelLeftOpen, Sun, UserRound } from "lucide-react";
 
 import { cn } from "cn";
 import { getAvatarUrl, getDisplayName, getInitials } from "@/lib/user-display";
@@ -34,6 +36,13 @@ export function AppSidebar({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  // theme is undefined until next-themes reads localStorage on mount — default
+  // the icon to "dark" (the app default) until then, same reasoning as the
+  // sidebar-collapsed localStorage read, to avoid a hydration mismatch.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isLight = mounted && theme === "light";
 
   return (
     <div className="flex h-full flex-col">
@@ -51,6 +60,14 @@ export function AppSidebar({
             Vehicle Maintenance Log
           </span>
         )}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => setTheme(isLight ? "dark" : "light")}
+          aria-label={isLight ? "สลับเป็นธีมมืด" : "สลับเป็นธีมสว่าง"}
+        >
+          {isLight ? <Sun /> : <Moon />}
+        </Button>
         {onToggleCollapsed && (
           <Button
             variant="ghost"

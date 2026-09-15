@@ -13,6 +13,8 @@ import {
   MAX_DOCUMENT_FILE_SIZE_BYTES,
 } from "@/lib/validations/document";
 import { createDrivingLicense, updateDrivingLicense } from "@/app/(app)/documents/actions";
+import { createClient } from "@/lib/supabase/client";
+import { uploadDocumentFile, deleteDocumentFileByUrl } from "@/lib/supabase/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,12 +69,39 @@ export function DrivingLicenseForm({ document }: { document?: Document }) {
 
   async function onSubmit(values: DrivingLicenseInput) {
     setFormError(null);
+    const docId = document?.id ?? crypto.randomUUID();
+    let fileUrl = document?.file_url ?? null;
+
+    // Upload straight from the browser to Supabase Storage instead of
+    // routing the file through the Server Action below — see vehicle-form.tsx.
+    if (file) {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setFormError("กรุณาเข้าสู่ระบบ");
+        return;
+      }
+
+      try {
+        fileUrl = await uploadDocumentFile(supabase, user.id, docId, file);
+      } catch {
+        setFormError("อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่");
+        return;
+      }
+      if (document?.file_url) {
+        await deleteDocumentFileByUrl(supabase, document.file_url);
+      }
+    }
+
     const formData = new FormData();
+    formData.set("id", docId);
     formData.set("issue_date", values.issue_date ?? "");
     formData.set("expiry_date", values.expiry_date);
     formData.set("policy_number", values.policy_number ?? "");
     formData.set("cost", values.cost !== undefined ? String(values.cost) : "");
-    if (file) formData.set("file", file);
+    formData.set("file_url", fileUrl ?? "");
 
     const result = isEdit
       ? await updateDrivingLicense(document!.id, formData)

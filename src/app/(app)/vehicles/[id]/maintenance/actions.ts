@@ -1,10 +1,9 @@
 "use server";
 
-import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { uploadReceiptImage, deleteReceiptImageByUrl } from "@/lib/supabase/storage";
+import { deleteReceiptImageByUrl } from "@/lib/supabase/storage";
 import { maintenanceLogSchema } from "@/lib/validations/maintenance-log";
 
 type ActionResult = { error: string } | undefined;
@@ -43,6 +42,13 @@ async function syncVehicleMileage(
 
 // Server Actions bypass proxy.ts (see CLAUDE.md) — every action re-checks
 // auth and relies on RLS (vehicle ownership) as the real backstop.
+//
+// Receipt images are uploaded client-side straight to Supabase Storage (see
+// maintenance-log-form.tsx) instead of through this action: Vercel hard-caps
+// a Serverless Function's request body at 4.5MB regardless of Next.js
+// config, so a multi-MB phone photo sent as part of the FormData here would
+// always come back 413 with no useful error surfaced to the user. The
+// action only ever receives the resulting id/URL as plain text fields now.
 export async function createMaintenanceLog(
   vehicleId: string,
   formData: FormData,
@@ -65,17 +71,11 @@ export async function createMaintenanceLog(
     .single();
   if (!vehicle) return { error: "ไม่พบข้อมูลรถ หรือคุณไม่มีสิทธิ์" };
 
-  const logId = randomUUID();
-  const receiptFile = formData.get("receipt");
-  let receiptUrl: string | null = null;
-
-  if (receiptFile instanceof File && receiptFile.size > 0) {
-    try {
-      receiptUrl = await uploadReceiptImage(supabase, user.id, logId, receiptFile);
-    } catch {
-      return { error: "อัปโหลดรูปใบเสร็จไม่สำเร็จ กรุณาลองใหม่" };
-    }
+  const logId = formData.get("id");
+  if (typeof logId !== "string" || !logId) {
+    return { error: "ข้อมูลไม่ถูกต้อง" };
   }
+  const receiptUrl = (formData.get("receipt_url") as string) || null;
 
   const { error } = await supabase.from("maintenance_logs").insert({
     id: logId,
@@ -114,25 +114,7 @@ export async function updateMaintenanceLog(
     return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
   }
 
-  const { data: existing } = await supabase
-    .from("maintenance_logs")
-    .select("receipt_image_url")
-    .eq("id", logId)
-    .single();
-
-  const receiptFile = formData.get("receipt");
-  let receiptUrl = existing?.receipt_image_url ?? null;
-
-  if (receiptFile instanceof File && receiptFile.size > 0) {
-    try {
-      receiptUrl = await uploadReceiptImage(supabase, user.id, logId, receiptFile);
-    } catch {
-      return { error: "อัปโหลดรูปใบเสร็จไม่สำเร็จ กรุณาลองใหม่" };
-    }
-    if (existing?.receipt_image_url) {
-      await deleteReceiptImageByUrl(supabase, existing.receipt_image_url);
-    }
-  }
+  const receiptUrl = (formData.get("receipt_url") as string) || null;
 
   const { data, error } = await supabase
     .from("maintenance_logs")

@@ -1,10 +1,9 @@
 "use server";
 
-import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { uploadDocumentFile, deleteDocumentFileByUrl } from "@/lib/supabase/storage";
+import { deleteDocumentFileByUrl } from "@/lib/supabase/storage";
 import { vehicleDocumentSchema, drivingLicenseSchema } from "@/lib/validations/document";
 
 type ActionResult = { error: string } | undefined;
@@ -22,6 +21,13 @@ function parseCommonFields(formData: FormData) {
 // auth itself; RLS (migration 0005's owner-matches-type policy) is the
 // real backstop for the vehicle-vs-user ownership split.
 
+// File uploads happen client-side straight to Supabase Storage (see
+// vehicle-document-form.tsx / driving-license-form.tsx) instead of through
+// these actions: Vercel hard-caps a Serverless Function's request body at
+// 4.5MB regardless of Next.js config, so a multi-MB scan/photo sent as part
+// of the FormData here would always come back 413 with no useful error
+// surfaced to the user. The actions only ever receive the resulting
+// id/URL as plain text fields now.
 export async function createVehicleDocument(
   vehicleId: string,
   formData: FormData,
@@ -47,17 +53,11 @@ export async function createVehicleDocument(
     .single();
   if (!vehicle) return { error: "ไม่พบข้อมูลรถ หรือคุณไม่มีสิทธิ์" };
 
-  const docId = randomUUID();
-  const file = formData.get("file");
-  let fileUrl: string | null = null;
-
-  if (file instanceof File && file.size > 0) {
-    try {
-      fileUrl = await uploadDocumentFile(supabase, user.id, docId, file);
-    } catch {
-      return { error: "อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่" };
-    }
+  const docId = formData.get("id");
+  if (typeof docId !== "string" || !docId) {
+    return { error: "ข้อมูลไม่ถูกต้อง" };
   }
+  const fileUrl = (formData.get("file_url") as string) || null;
 
   const { error } = await supabase.from("documents").insert({
     id: docId,
@@ -94,25 +94,7 @@ export async function updateVehicleDocument(
     return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
   }
 
-  const { data: existing } = await supabase
-    .from("documents")
-    .select("file_url")
-    .eq("id", docId)
-    .single();
-
-  const file = formData.get("file");
-  let fileUrl = existing?.file_url ?? null;
-
-  if (file instanceof File && file.size > 0) {
-    try {
-      fileUrl = await uploadDocumentFile(supabase, user.id, docId, file);
-    } catch {
-      return { error: "อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่" };
-    }
-    if (existing?.file_url) {
-      await deleteDocumentFileByUrl(supabase, existing.file_url);
-    }
-  }
+  const fileUrl = (formData.get("file_url") as string) || null;
 
   const { data, error } = await supabase
     .from("documents")
@@ -146,17 +128,11 @@ export async function createDrivingLicense(formData: FormData): Promise<ActionRe
     return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
   }
 
-  const docId = randomUUID();
-  const file = formData.get("file");
-  let fileUrl: string | null = null;
-
-  if (file instanceof File && file.size > 0) {
-    try {
-      fileUrl = await uploadDocumentFile(supabase, user.id, docId, file);
-    } catch {
-      return { error: "อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่" };
-    }
+  const docId = formData.get("id");
+  if (typeof docId !== "string" || !docId) {
+    return { error: "ข้อมูลไม่ถูกต้อง" };
   }
+  const fileUrl = (formData.get("file_url") as string) || null;
 
   const { error } = await supabase.from("documents").insert({
     id: docId,
@@ -189,25 +165,7 @@ export async function updateDrivingLicense(docId: string, formData: FormData): P
     return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
   }
 
-  const { data: existing } = await supabase
-    .from("documents")
-    .select("file_url")
-    .eq("id", docId)
-    .single();
-
-  const file = formData.get("file");
-  let fileUrl = existing?.file_url ?? null;
-
-  if (file instanceof File && file.size > 0) {
-    try {
-      fileUrl = await uploadDocumentFile(supabase, user.id, docId, file);
-    } catch {
-      return { error: "อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่" };
-    }
-    if (existing?.file_url) {
-      await deleteDocumentFileByUrl(supabase, existing.file_url);
-    }
-  }
+  const fileUrl = (formData.get("file_url") as string) || null;
 
   const { data, error } = await supabase
     .from("documents")

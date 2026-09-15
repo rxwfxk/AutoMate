@@ -1,10 +1,9 @@
 "use server";
 
-import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { uploadVehicleImage, deleteVehicleImageByUrl } from "@/lib/supabase/storage";
+import { deleteVehicleImageByUrl } from "@/lib/supabase/storage";
 import { vehicleSchema } from "@/lib/validations/vehicle";
 
 type ActionResult = { error: string } | undefined;
@@ -22,6 +21,13 @@ function parseVehicleFormData(formData: FormData) {
 
 // Server Actions bypass proxy.ts entirely (see CLAUDE.md), so every action
 // re-checks auth itself — RLS is the real backstop either way.
+//
+// Image files are uploaded client-side straight to Supabase Storage (see
+// vehicle-form.tsx) instead of through this action: Vercel hard-caps a
+// Serverless Function's request body at 4.5MB regardless of Next.js config,
+// so a multi-MB phone photo sent as part of the FormData here would always
+// come back 413 with no useful error surfaced to the user. The action only
+// ever receives the resulting id/URL as plain text fields now.
 export async function createVehicle(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -34,17 +40,11 @@ export async function createVehicle(formData: FormData): Promise<ActionResult> {
     return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
   }
 
-  const vehicleId = randomUUID();
-  const imageFile = formData.get("image");
-  let imageUrl: string | null = null;
-
-  if (imageFile instanceof File && imageFile.size > 0) {
-    try {
-      imageUrl = await uploadVehicleImage(supabase, user.id, vehicleId, imageFile);
-    } catch {
-      return { error: "อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่" };
-    }
+  const vehicleId = formData.get("id");
+  if (typeof vehicleId !== "string" || !vehicleId) {
+    return { error: "ข้อมูลไม่ถูกต้อง" };
   }
+  const imageUrl = (formData.get("image_url") as string) || null;
 
   const { error } = await supabase.from("vehicles").insert({
     id: vehicleId,
@@ -79,25 +79,7 @@ export async function updateVehicle(
     return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
   }
 
-  const { data: existing } = await supabase
-    .from("vehicles")
-    .select("image_url")
-    .eq("id", vehicleId)
-    .single();
-
-  const imageFile = formData.get("image");
-  let imageUrl = existing?.image_url ?? null;
-
-  if (imageFile instanceof File && imageFile.size > 0) {
-    try {
-      imageUrl = await uploadVehicleImage(supabase, user.id, vehicleId, imageFile);
-    } catch {
-      return { error: "อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่" };
-    }
-    if (existing?.image_url) {
-      await deleteVehicleImageByUrl(supabase, existing.image_url);
-    }
-  }
+  const imageUrl = (formData.get("image_url") as string) || null;
 
   const { data, error } = await supabase
     .from("vehicles")

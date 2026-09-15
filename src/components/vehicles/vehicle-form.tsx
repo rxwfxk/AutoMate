@@ -13,6 +13,8 @@ import {
   ACCEPTED_IMAGE_TYPES,
 } from "@/lib/validations/vehicle";
 import { createVehicle, updateVehicle } from "@/app/(app)/vehicles/actions";
+import { createClient } from "@/lib/supabase/client";
+import { uploadVehicleImage, deleteVehicleImageByUrl } from "@/lib/supabase/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,14 +70,44 @@ export function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
 
   async function onSubmit(values: VehicleInput) {
     setFormError(null);
+    const vehicleId = vehicle?.id ?? crypto.randomUUID();
+    let imageUrl = vehicle?.image_url ?? null;
+
+    // Upload straight from the browser to Supabase Storage instead of
+    // routing the file through the Server Action below — Vercel hard-caps a
+    // Serverless Function's request body at 4.5MB regardless of Next.js
+    // config, so a multi-MB phone photo sent as FormData would always come
+    // back 413 with the UI stuck on its loading spinner forever.
+    if (imageFile) {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setFormError("กรุณาเข้าสู่ระบบ");
+        return;
+      }
+
+      try {
+        imageUrl = await uploadVehicleImage(supabase, user.id, vehicleId, imageFile);
+      } catch {
+        setFormError("อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่");
+        return;
+      }
+      if (vehicle?.image_url) {
+        await deleteVehicleImageByUrl(supabase, vehicle.image_url);
+      }
+    }
+
     const formData = new FormData();
+    formData.set("id", vehicleId);
     formData.set("name", values.name);
     formData.set("brand", values.brand);
     formData.set("model", values.model);
     formData.set("year", values.year !== undefined ? String(values.year) : "");
     formData.set("license_plate", values.license_plate ?? "");
     formData.set("current_mileage", String(values.current_mileage));
-    if (imageFile) formData.set("image", imageFile);
+    formData.set("image_url", imageUrl ?? "");
 
     const result = isEdit
       ? await updateVehicle(vehicle!.id, formData)

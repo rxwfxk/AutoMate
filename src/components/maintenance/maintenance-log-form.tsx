@@ -16,6 +16,8 @@ import {
   updateMaintenanceLog,
 } from "@/app/(app)/vehicles/[id]/maintenance/actions";
 import { getMaintenanceIcon } from "@/lib/maintenance-icons";
+import { createClient } from "@/lib/supabase/client";
+import { uploadReceiptImage, deleteReceiptImageByUrl } from "@/lib/supabase/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -97,14 +99,41 @@ export function MaintenanceLogForm({
 
   async function onSubmit(values: MaintenanceLogInput) {
     setFormError(null);
+    const logId = log?.id ?? crypto.randomUUID();
+    let receiptUrl = log?.receipt_image_url ?? null;
+
+    // Upload straight from the browser to Supabase Storage instead of
+    // routing the file through the Server Action below — see vehicle-form.tsx.
+    if (receiptFile) {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setFormError("กรุณาเข้าสู่ระบบ");
+        return;
+      }
+
+      try {
+        receiptUrl = await uploadReceiptImage(supabase, user.id, logId, receiptFile);
+      } catch {
+        setFormError("อัปโหลดรูปใบเสร็จไม่สำเร็จ กรุณาลองใหม่");
+        return;
+      }
+      if (log?.receipt_image_url) {
+        await deleteReceiptImageByUrl(supabase, log.receipt_image_url);
+      }
+    }
+
     const formData = new FormData();
+    formData.set("id", logId);
     formData.set("maintenance_type_id", values.maintenance_type_id);
     formData.set("service_date", values.service_date);
     formData.set("mileage_at_service", String(values.mileage_at_service));
     formData.set("cost", values.cost !== undefined ? String(values.cost) : "");
     formData.set("shop_name", values.shop_name ?? "");
     formData.set("notes", values.notes ?? "");
-    if (receiptFile) formData.set("receipt", receiptFile);
+    formData.set("receipt_url", receiptUrl ?? "");
 
     const result = isEdit
       ? await updateMaintenanceLog(log!.id, vehicleId, formData)

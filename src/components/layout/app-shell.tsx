@@ -75,7 +75,11 @@ export function AppShell({
             </Button>
             <SheetContent side="left" className="w-72 p-0">
               <SheetTitle className="sr-only">เมนูนำทาง</SheetTitle>
-              <AppSidebar user={user} onNavigate={() => setMobileNavOpen(false)} />
+              <AppSidebar
+                user={user}
+                onNavigate={() => setMobileNavOpen(false)}
+                insideMobileDrawer
+              />
             </SheetContent>
           </Sheet>
           <div className="flex items-center gap-2">

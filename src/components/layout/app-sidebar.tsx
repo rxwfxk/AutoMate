@@ -28,12 +28,15 @@ export function AppSidebar({
   collapsed = false,
   onToggleCollapsed,
   onNavigate,
+  insideMobileDrawer = false,
 }: {
   user: User | null;
   /** Only meaningful on the desktop rail — the mobile drawer is always expanded. */
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
   onNavigate?: () => void;
+  /** Adds clearance so our own header buttons don't sit under the Sheet's built-in close button. */
+  insideMobileDrawer?: boolean;
 }) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
@@ -50,6 +53,7 @@ export function AppSidebar({
         className={cn(
           "flex items-center gap-2 p-4",
           collapsed && "flex-col justify-center gap-3 px-2",
+          insideMobileDrawer && "pr-12",
         )}
       >
         {collapsed && onToggleCollapsed && (

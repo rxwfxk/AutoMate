@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import type { User } from "@supabase/supabase-js";
-import { Bike, Gauge, Home, Moon, PanelLeftClose, PanelLeftOpen, Sun, UserRound } from "lucide-react";
+import { Bike, Gauge, Home, Menu, Moon, PanelLeftClose, Sun, UserRound } from "lucide-react";
 
 import { cn } from "cn";
 import { getAvatarUrl, getDisplayName, getInitials } from "@/lib/user-display";
@@ -52,6 +52,16 @@ export function AppSidebar({
           collapsed && "flex-col justify-center gap-3 px-2",
         )}
       >
+        {collapsed && onToggleCollapsed && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onToggleCollapsed}
+            aria-label="ขยาย sidebar"
+          >
+            <Menu />
+          </Button>
+        )}
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Gauge className="size-4" />
         </div>
@@ -68,14 +78,14 @@ export function AppSidebar({
         >
           {isLight ? <Sun /> : <Moon />}
         </Button>
-        {onToggleCollapsed && (
+        {!collapsed && onToggleCollapsed && (
           <Button
             variant="ghost"
             size="icon-sm"
             onClick={onToggleCollapsed}
-            aria-label={collapsed ? "ขยาย sidebar" : "ยุบ sidebar"}
+            aria-label="ยุบ sidebar"
           >
-            {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+            <PanelLeftClose />
           </Button>
         )}
       </div>

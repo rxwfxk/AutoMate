@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Paperclip } from "lucide-react";
@@ -11,10 +12,7 @@ import {
   type MaintenanceLogInput,
 } from "@/lib/validations/maintenance-log";
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_SIZE_BYTES } from "@/lib/validations/vehicle";
-import {
-  createMaintenanceLog,
-  updateMaintenanceLog,
-} from "@/app/(app)/vehicles/[id]/maintenance/actions";
+import { apiFetch } from "@/lib/api-client";
 import { getMaintenanceIcon } from "@/lib/maintenance-icons";
 import { createClient } from "@/lib/supabase/client";
 import { uploadReceiptImage, deleteReceiptImageByUrl } from "@/lib/supabase/storage";
@@ -42,6 +40,7 @@ export function MaintenanceLogForm({
   defaultMileage: number;
   log?: MaintenanceLog;
 }) {
+  const router = useRouter();
   const isEdit = Boolean(log);
   const [formError, setFormError] = useState<string | null>(null);
   const [receiptError, setReceiptError] = useState<string | null>(null);
@@ -125,21 +124,34 @@ export function MaintenanceLogForm({
       }
     }
 
-    const formData = new FormData();
-    formData.set("id", logId);
-    formData.set("maintenance_type_id", values.maintenance_type_id);
-    formData.set("service_date", values.service_date);
-    formData.set("mileage_at_service", String(values.mileage_at_service));
-    formData.set("cost", values.cost !== undefined ? String(values.cost) : "");
-    formData.set("shop_name", values.shop_name ?? "");
-    formData.set("notes", values.notes ?? "");
-    formData.set("receipt_url", receiptUrl ?? "");
+    const payload = {
+      id: logId,
+      maintenance_type_id: values.maintenance_type_id,
+      service_date: values.service_date,
+      mileage_at_service: values.mileage_at_service,
+      cost: values.cost,
+      shop_name: values.shop_name,
+      notes: values.notes,
+      receipt_url: receiptUrl,
+    };
 
     const result = isEdit
-      ? await updateMaintenanceLog(log!.id, vehicleId, formData)
-      : await createMaintenanceLog(vehicleId, formData);
+      ? await apiFetch(`/api/vehicles/${vehicleId}/maintenance-logs/${log!.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        })
+      : await apiFetch(`/api/vehicles/${vehicleId}/maintenance-logs`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
 
-    if (result?.error) setFormError(result.error);
+    if (result.error) {
+      setFormError(result.error);
+      return;
+    }
+
+    router.push(`/vehicles/${vehicleId}`);
+    router.refresh();
   }
 
   // Guard at the raw submit event, not inside onSubmit — see vehicle-form.tsx.

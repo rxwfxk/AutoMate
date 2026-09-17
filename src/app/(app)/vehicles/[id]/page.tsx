@@ -1,9 +1,12 @@
+"use client";
+
+import { use, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Bike, FileText, Pencil, Plus, Wrench } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bike, FileText, Loader2, Pencil, Plus, Wrench } from "lucide-react";
 
-import { createClient } from "@/lib/supabase/server";
+import { apiFetch } from "@/lib/api-client";
 import { buttonVariants } from "@/components/ui/button";
 import { DeleteVehicleDialog } from "@/components/vehicles/delete-vehicle-dialog";
 import {
@@ -11,29 +14,57 @@ import {
   type MaintenanceLogWithType,
 } from "@/components/maintenance/maintenance-log-item";
 import { DocumentItem } from "@/components/documents/document-item";
+import type { Document, Vehicle } from "@/types/database.types";
 
-export default async function VehicleDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const supabase = await createClient();
+type VehicleDetailResponse = {
+  vehicle: Vehicle;
+  logs: MaintenanceLogWithType[];
+  documents: Document[];
+};
 
-  const { data: vehicle } = await supabase.from("vehicles").select("*").eq("id", id).single();
-  if (!vehicle) notFound();
+export default function VehicleDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+  const [result, setResult] = useState<VehicleDetailResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const { data: logs } = await supabase
-    .from("maintenance_logs")
-    .select("*, maintenance_types(name, icon, default_interval_km)")
-    .eq("vehicle_id", id)
-    .order("service_date", { ascending: false });
+  useEffect(() => {
+    apiFetch<VehicleDetailResponse>(`/api/vehicles/${id}`).then((res) => {
+      if (res.error) setError(res.error);
+      else setResult(res.data!);
+    });
+  }, [id]);
 
-  const { data: documents } = await supabase
-    .from("documents")
-    .select("*")
-    .eq("vehicle_id", id)
-    .order("expiry_date", { ascending: true });
+  if (error) {
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-3 p-4 text-center sm:p-6">
+        <p className="text-muted-foreground">{error}</p>
+        <Link href="/vehicles" className={buttonVariants()}>
+          กลับไปหน้ารถของฉัน
+        </Link>
+      </div>
+    );
+  }
+
+  if (!result) {
+    return (
+      <div className="flex flex-1 items-center justify-center py-16">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const { vehicle, logs, documents } = result;
+
+  function handleLogDeleted(logId: string) {
+    setResult((prev) => (prev ? { ...prev, logs: prev.logs.filter((l) => l.id !== logId) } : prev));
+  }
+
+  function handleDocumentDeleted(docId: string) {
+    setResult((prev) =>
+      prev ? { ...prev, documents: prev.documents.filter((d) => d.id !== docId) } : prev,
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-4 sm:p-6">
@@ -65,7 +96,11 @@ export default async function VehicleDetailPage({
               >
                 <Pencil />
               </Link>
-              <DeleteVehicleDialog vehicleId={vehicle.id} vehicleName={vehicle.name} />
+              <DeleteVehicleDialog
+                vehicleId={vehicle.id}
+                vehicleName={vehicle.name}
+                onDeleted={() => router.push("/vehicles")}
+              />
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -93,14 +128,15 @@ export default async function VehicleDetailPage({
         </Link>
       </div>
 
-      {logs && logs.length > 0 ? (
+      {logs.length > 0 ? (
         <div className="flex flex-col gap-3">
-          {(logs as MaintenanceLogWithType[]).map((log) => (
+          {logs.map((log) => (
             <MaintenanceLogItem
               key={log.id}
               log={log}
               vehicleId={vehicle.id}
               currentMileage={vehicle.current_mileage}
+              onDeleted={handleLogDeleted}
             />
           ))}
         </div>
@@ -129,14 +165,15 @@ export default async function VehicleDetailPage({
         </Link>
       </div>
 
-      {documents && documents.length > 0 ? (
+      {documents.length > 0 ? (
         <div className="flex flex-col gap-3">
           {documents.map((document) => (
             <DocumentItem
               key={document.id}
               document={document}
               editHref={`/vehicles/${vehicle.id}/documents/${document.id}/edit`}
-              revalidateTarget={`/vehicles/${vehicle.id}`}
+              deleteUrl={`/api/vehicles/${vehicle.id}/documents/${document.id}`}
+              onDeleted={handleDocumentDeleted}
             />
           ))}
         </div>

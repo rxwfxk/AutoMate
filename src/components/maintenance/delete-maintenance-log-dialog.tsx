@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 
-import { deleteMaintenanceLog } from "@/app/(app)/vehicles/[id]/maintenance/actions";
+import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -21,10 +21,12 @@ export function DeleteMaintenanceLogDialog({
   logId,
   vehicleId,
   typeName,
+  onDeleted,
 }: {
   logId: string;
   vehicleId: string;
   typeName: string;
+  onDeleted?: (logId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -33,13 +35,17 @@ export function DeleteMaintenanceLogDialog({
   async function handleDelete() {
     setIsDeleting(true);
     setError(null);
-    const result = await deleteMaintenanceLog(logId, vehicleId);
-    if (result?.error) {
+    const result = await apiFetch(
+      `/api/vehicles/${vehicleId}/maintenance-logs/${logId}`,
+      { method: "DELETE" },
+    );
+    if (result.error) {
       setError(result.error);
       setIsDeleting(false);
       return;
     }
     setOpen(false);
+    onDeleted?.(logId);
   }
 
   return (

@@ -1,6 +1,12 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Bike, Clock, ReceiptText } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { AlertTriangle, ArrowRight, Bike, Clock, Loader2, ReceiptText } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+
+import { createClient } from "@/lib/supabase/client";
+import { apiFetch } from "@/lib/api-client";
 import { getDisplayName } from "@/lib/user-display";
 import { buttonVariants } from "@/components/ui/button";
 import { StatTile } from "@/components/dashboard/stat-tile";
@@ -16,19 +22,66 @@ import {
   getVehicleOverallStatus,
 } from "@/lib/dashboard-data";
 import type { MaintenanceLogWithType } from "@/components/maintenance/maintenance-log-item";
+import type { Document, Vehicle } from "@/types/database.types";
 
-export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+type VehicleDetail = { vehicle: Vehicle; logs: MaintenanceLogWithType[]; documents: Document[] };
 
-  const { data: vehicles } = await supabase
-    .from("vehicles")
-    .select("*")
-    .order("created_at", { ascending: false });
+export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
+  const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
+  const [logs, setLogs] = useState<MaintenanceLogWithType[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!vehicles || vehicles.length === 0) {
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+
+    // No single "dashboard" endpoint by design — this composes the same
+    // per-vehicle endpoints the Vehicles module already exposes (GET
+    // /api/vehicles for the list, then GET /api/vehicles/[id] per vehicle
+    // for its nested logs/documents), same as any external API consumer
+    // would have to. Fine at the vehicle counts this app expects; a real
+    // fleet-scale version would add a dedicated aggregate endpoint instead.
+    apiFetch<Vehicle[]>("/api/vehicles").then(async (result) => {
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      const vehicleList = result.data!;
+      setVehicles(vehicleList);
+      if (vehicleList.length === 0) return;
+
+      const details = await Promise.all(
+        vehicleList.map((v) => apiFetch<VehicleDetail>(`/api/vehicles/${v.id}`)),
+      );
+      const failed = details.find((d) => d.error);
+      if (failed) {
+        setError(failed.error!);
+        return;
+      }
+      setLogs(details.flatMap((d) => d.data!.logs));
+      setDocuments(details.flatMap((d) => d.data!.documents));
+    });
+  }, []);
+
+  if (error) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-6 text-center">
+        <p className="text-muted-foreground">{error}</p>
+      </div>
+    );
+  }
+
+  if (!vehicles) {
+    return (
+      <div className="flex flex-1 items-center justify-center py-16">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (vehicles.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
         <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-xl border border-border bg-card p-8 text-center shadow-sm">
@@ -49,15 +102,6 @@ export default async function Home() {
       </div>
     );
   }
-
-  const { data: logsData } = await supabase
-    .from("maintenance_logs")
-    .select("*, maintenance_types(name, icon, default_interval_km)")
-    .order("service_date", { ascending: false });
-  const logs = (logsData ?? []) as MaintenanceLogWithType[];
-
-  const { data: documentsData } = await supabase.from("documents").select("*");
-  const documents = documentsData ?? [];
 
   const vehicleMileageById = new Map(vehicles.map((v) => [v.id, v.current_mileage]));
   const vehicleNameById = new Map(vehicles.map((v) => [v.id, v.name]));

@@ -11,11 +11,13 @@ import type { Document } from "@/types/database.types";
 export function DocumentItem({
   document,
   editHref,
-  revalidateTarget,
+  deleteUrl,
+  onDeleted,
 }: {
   document: Document;
   editHref: string;
-  revalidateTarget: string;
+  deleteUrl: string;
+  onDeleted?: (docId: string) => void;
 }) {
   const Icon = DOCUMENT_TYPE_ICON[document.document_type];
   const label = DOCUMENT_TYPE_LABEL[document.document_type];
@@ -70,7 +72,12 @@ export function DocumentItem({
         >
           <Pencil />
         </Link>
-        <DeleteDocumentDialog docId={document.id} label={label} revalidateTarget={revalidateTarget} />
+        <DeleteDocumentDialog
+          docId={document.id}
+          label={label}
+          deleteUrl={deleteUrl}
+          onDeleted={onDeleted}
+        />
       </div>
     </div>
   );

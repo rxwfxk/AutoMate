@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Upload } from "lucide-react";
@@ -12,7 +13,7 @@ import {
   MAX_IMAGE_SIZE_BYTES,
   ACCEPTED_IMAGE_TYPES,
 } from "@/lib/validations/vehicle";
-import { createVehicle, updateVehicle } from "@/app/(app)/vehicles/actions";
+import { apiFetch } from "@/lib/api-client";
 import { createClient } from "@/lib/supabase/client";
 import { uploadVehicleImage, deleteVehicleImageByUrl } from "@/lib/supabase/storage";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import type { Vehicle } from "@/types/database.types";
 
 export function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
+  const router = useRouter();
   const isEdit = Boolean(vehicle);
   const [formError, setFormError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -99,21 +101,31 @@ export function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
       }
     }
 
-    const formData = new FormData();
-    formData.set("id", vehicleId);
-    formData.set("name", values.name);
-    formData.set("brand", values.brand);
-    formData.set("model", values.model);
-    formData.set("year", values.year !== undefined ? String(values.year) : "");
-    formData.set("license_plate", values.license_plate ?? "");
-    formData.set("current_mileage", String(values.current_mileage));
-    formData.set("image_url", imageUrl ?? "");
+    const payload = {
+      id: vehicleId,
+      name: values.name,
+      brand: values.brand,
+      model: values.model,
+      year: values.year,
+      license_plate: values.license_plate,
+      current_mileage: values.current_mileage,
+      image_url: imageUrl,
+    };
 
     const result = isEdit
-      ? await updateVehicle(vehicle!.id, formData)
-      : await createVehicle(formData);
+      ? await apiFetch(`/api/vehicles/${vehicle!.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        })
+      : await apiFetch("/api/vehicles", { method: "POST", body: JSON.stringify(payload) });
 
-    if (result?.error) setFormError(result.error);
+    if (result.error) {
+      setFormError(result.error);
+      return;
+    }
+
+    router.push("/vehicles");
+    router.refresh();
   }
 
   // Guard at the raw submit event, not inside onSubmit — RHF's async

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Paperclip } from "lucide-react";
@@ -12,7 +13,7 @@ import {
   ACCEPTED_DOCUMENT_FILE_TYPES,
   MAX_DOCUMENT_FILE_SIZE_BYTES,
 } from "@/lib/validations/document";
-import { createDrivingLicense, updateDrivingLicense } from "@/app/(app)/documents/actions";
+import { apiFetch } from "@/lib/api-client";
 import { createClient } from "@/lib/supabase/client";
 import { uploadDocumentFile, deleteDocumentFileByUrl } from "@/lib/supabase/storage";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import type { Document } from "@/types/database.types";
 
 export function DrivingLicenseForm({ document }: { document?: Document }) {
+  const router = useRouter();
   const isEdit = Boolean(document);
   const [formError, setFormError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -95,19 +97,26 @@ export function DrivingLicenseForm({ document }: { document?: Document }) {
       }
     }
 
-    const formData = new FormData();
-    formData.set("id", docId);
-    formData.set("issue_date", values.issue_date ?? "");
-    formData.set("expiry_date", values.expiry_date);
-    formData.set("policy_number", values.policy_number ?? "");
-    formData.set("cost", values.cost !== undefined ? String(values.cost) : "");
-    formData.set("file_url", fileUrl ?? "");
+    const payload = {
+      id: docId,
+      issue_date: values.issue_date,
+      expiry_date: values.expiry_date,
+      policy_number: values.policy_number,
+      cost: values.cost,
+      file_url: fileUrl,
+    };
 
     const result = isEdit
-      ? await updateDrivingLicense(document!.id, formData)
-      : await createDrivingLicense(formData);
+      ? await apiFetch("/api/driving-license", { method: "PUT", body: JSON.stringify(payload) })
+      : await apiFetch("/api/driving-license", { method: "POST", body: JSON.stringify(payload) });
 
-    if (result?.error) setFormError(result.error);
+    if (result.error) {
+      setFormError(result.error);
+      return;
+    }
+
+    router.push("/profile");
+    router.refresh();
   }
 
   // Guard at the raw submit event, not inside onSubmit — see vehicle-form.tsx.

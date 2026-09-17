@@ -6,7 +6,13 @@ import { buttonVariants } from "@/components/ui/button";
 import { DeleteVehicleDialog } from "@/components/vehicles/delete-vehicle-dialog";
 import type { Vehicle } from "@/types/database.types";
 
-export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
+export function VehicleCard({
+  vehicle,
+  onDeleted,
+}: {
+  vehicle: Vehicle;
+  onDeleted?: (id: string) => void;
+}) {
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <Link href={`/vehicles/${vehicle.id}`} className="relative aspect-video w-full bg-muted">
@@ -40,7 +46,11 @@ export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
             >
               <Pencil />
             </Link>
-            <DeleteVehicleDialog vehicleId={vehicle.id} vehicleName={vehicle.name} />
+            <DeleteVehicleDialog
+              vehicleId={vehicle.id}
+              vehicleName={vehicle.name}
+              onDeleted={onDeleted}
+            />
           </div>
         </div>
 

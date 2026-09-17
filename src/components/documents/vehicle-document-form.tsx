@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Paperclip } from "lucide-react";
@@ -15,10 +16,7 @@ import {
 import { DOCUMENT_TYPE_LABEL, VEHICLE_DOCUMENT_TYPES } from "@/lib/document-types";
 import { createClient } from "@/lib/supabase/client";
 import { uploadDocumentFile, deleteDocumentFileByUrl } from "@/lib/supabase/storage";
-import {
-  createVehicleDocument,
-  updateVehicleDocument,
-} from "@/app/(app)/documents/actions";
+import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +36,7 @@ export function VehicleDocumentForm({
   vehicleId: string;
   document?: Document;
 }) {
+  const router = useRouter();
   const isEdit = Boolean(document);
   const [formError, setFormError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -118,20 +117,33 @@ export function VehicleDocumentForm({
       }
     }
 
-    const formData = new FormData();
-    formData.set("id", docId);
-    formData.set("document_type", values.document_type);
-    formData.set("issue_date", values.issue_date ?? "");
-    formData.set("expiry_date", values.expiry_date);
-    formData.set("policy_number", values.policy_number ?? "");
-    formData.set("cost", values.cost !== undefined ? String(values.cost) : "");
-    formData.set("file_url", fileUrl ?? "");
+    const payload = {
+      id: docId,
+      document_type: values.document_type,
+      issue_date: values.issue_date,
+      expiry_date: values.expiry_date,
+      policy_number: values.policy_number,
+      cost: values.cost,
+      file_url: fileUrl,
+    };
 
     const result = isEdit
-      ? await updateVehicleDocument(document!.id, vehicleId, formData)
-      : await createVehicleDocument(vehicleId, formData);
+      ? await apiFetch(`/api/vehicles/${vehicleId}/documents/${document!.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        })
+      : await apiFetch(`/api/vehicles/${vehicleId}/documents`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
 
-    if (result?.error) setFormError(result.error);
+    if (result.error) {
+      setFormError(result.error);
+      return;
+    }
+
+    router.push(`/vehicles/${vehicleId}`);
+    router.refresh();
   }
 
   // Guard at the raw submit event, not inside onSubmit — see vehicle-form.tsx.

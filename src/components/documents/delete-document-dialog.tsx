@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 
-import { deleteDocument } from "@/app/(app)/documents/actions";
+import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -20,11 +20,15 @@ import {
 export function DeleteDocumentDialog({
   docId,
   label,
-  revalidateTarget,
+  deleteUrl,
+  onDeleted,
 }: {
   docId: string;
   label: string;
-  revalidateTarget: string;
+  /** e.g. `/api/vehicles/{id}/documents/{docId}` or `/api/driving-license`
+   * (the license route needs no id — it's one row per user). */
+  deleteUrl: string;
+  onDeleted?: (docId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -33,13 +37,14 @@ export function DeleteDocumentDialog({
   async function handleDelete() {
     setIsDeleting(true);
     setError(null);
-    const result = await deleteDocument(docId, revalidateTarget);
-    if (result?.error) {
+    const result = await apiFetch(deleteUrl, { method: "DELETE" });
+    if (result.error) {
       setError(result.error);
       setIsDeleting(false);
       return;
     }
     setOpen(false);
+    onDeleted?.(docId);
   }
 
   return (

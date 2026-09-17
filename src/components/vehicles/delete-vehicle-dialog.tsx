@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 
-import { deleteVehicle } from "@/app/(app)/vehicles/actions";
+import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -20,9 +20,11 @@ import {
 export function DeleteVehicleDialog({
   vehicleId,
   vehicleName,
+  onDeleted,
 }: {
   vehicleId: string;
   vehicleName: string;
+  onDeleted?: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -31,13 +33,14 @@ export function DeleteVehicleDialog({
   async function handleDelete() {
     setIsDeleting(true);
     setError(null);
-    const result = await deleteVehicle(vehicleId);
-    if (result?.error) {
+    const result = await apiFetch(`/api/vehicles/${vehicleId}`, { method: "DELETE" });
+    if (result.error) {
       setError(result.error);
       setIsDeleting(false);
       return;
     }
     setOpen(false);
+    onDeleted?.(vehicleId);
   }
 
   return (

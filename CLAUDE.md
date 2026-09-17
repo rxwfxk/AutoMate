@@ -79,6 +79,58 @@ notification_settings (id, user_id, days_before_alert[], notify_via, email)
 
 รายละเอียดจริง (RLS policies, TS types) จะกำหนดใน Step 2
 
+## สถาปัตยกรรม Frontend/Backend (REST API แยกชัดเจน)
+
+**อัปเดต 2026-09-16** — ตามคำขอผู้ใช้ (นอกแผน 9-step เดิม, ทำหลัง Step 9): refactor จาก Next.js Server Actions ทั้งหมด ไปเป็น **REST API แยกชัดเจนระหว่าง frontend/backend** ภายในโปรเจกต์เดียวกัน (ไม่ได้แยกเป็นคนละ repo/คนละ deploy) เหตุผล: (1) อยากมี backend ที่ทดสอบผ่าน POSTMAN ได้จริงสำหรับงานมหาลัย (2) อยากเรียนรู้สถาปัตยกรรม REST จริงจัง — ทำทีละโมดูล 4 โมดูล ทดสอบผ่านจริงทุกโมดูลก่อนไปโมดูลถัดไป (เหมือนสไตล์ 9-step เดิม)
+
+### โครงสร้าง 2 ชั้นชัดเจน
+
+```
+src/app/(app)/**, src/components/**   ← Frontend ล้วนๆ (React, "use client" ทั้งหมด)
+src/app/api/**                        ← Backend ล้วนๆ (Next.js Route Handlers)
+```
+
+### API ทั้งหมดที่มีตอนนี้ (`src/app/api/`)
+
+| Endpoint | Methods | หมายเหตุ |
+|---|---|---|
+| `/api/vehicles` | GET, POST | list/create รถ |
+| `/api/vehicles/[id]` | GET, PUT, DELETE | รายละเอียด (พร้อม logs+documents nested), แก้ไข, ลบ |
+| `/api/vehicles/[id]/maintenance-logs` | POST | สร้างบันทึกซ่อมบำรุง |
+| `/api/vehicles/[id]/maintenance-logs/[logId]` | PUT, DELETE | แก้ไข/ลบบันทึก |
+| `/api/vehicles/[id]/documents` | POST | สร้างเอกสารรถ (พ.ร.บ./ประกัน/ภาษี) |
+| `/api/vehicles/[id]/documents/[docId]` | PUT, DELETE | แก้ไข/ลบเอกสารรถ |
+| `/api/driving-license` | GET, POST, PUT, DELETE | ใบขับขี่ — **ไม่มี id ใน URL** เพราะมีได้แค่ 1 ต่อ user (ค้นด้วย `document_type = driving_license` + RLS) |
+| `/api/maintenance-types` | GET | global lookup อ่านอย่างเดียว |
+
+### Auth: Bearer token ล้วน ไม่มี cookie fallback
+
+ทุก endpoint ต้องมี header `Authorization: Bearer <access_token>` เหมือนกันหมด **ทั้ง frontend ของแอปเองและ POSTMAN/เครื่องมือภายนอก** ใช้วิธีเดียวกันเป๊ะ — ไม่ได้พึ่ง cookie session แบบที่หน้าเว็บอื่น (login/signup) ใช้ ทำให้ `src/proxy.ts` ต้องเพิ่มข้อยกเว้น `/api` ออกจาก matcher (ไม่งั้น request ที่ไม่มี cookie จะโดน redirect ไป `/login` แทนที่จะได้ 401 JSON ที่ถูกต้อง)
+
+**โครงสร้างพื้นฐานที่ใช้ร่วมกัน**:
+- `src/lib/api/auth.ts` — `authenticateRequest()` เช็ค Bearer token แล้วคืน Supabase client ที่ผูกกับ token นั้น (RLS ยังบังคับสิทธิ์เหมือนเดิมทุกประการ ไม่ได้ใช้ service role key)
+- `src/lib/api/respond.ts` — `ok()`/`fail()` ให้ response หน้าตาเดียวกันทุก route (`{error, data, msg}`)
+- `src/lib/api-client.ts` (ฝั่ง frontend) — `apiFetch()` แนบ Bearer token จาก session ปัจจุบันให้อัตโนมัติทุกครั้งที่เรียก
+- `src/lib/api/maintenance.ts` — `syncVehicleMileage()` ใช้ร่วมกันระหว่าง create/update maintenance log
+
+### หน้าเว็บ (pages) เปลี่ยนจาก Server Component เป็น Client Component
+
+เกือบทุกหน้าใน `(app)/` เปลี่ยนจาก async Server Component ที่ query Supabase ตรงๆ เป็น `"use client"` component ที่ fetch ข้อมูลผ่าน API ตอน mount (มี loading state) — แลกกับการเสีย SSR/first-paint ไปบ้าง เพื่อให้ frontend คุยกับ "backend ของตัวเอง" ผ่าน HTTP จริงๆ เท่านั้น ไม่ import โค้ดฝั่งเซิร์ฟเวอร์มาเรียกตรงๆ อีกต่อไป
+
+### สิ่งที่**ไม่ได้แตะ** (ยังเหมือนเดิมทุกประการ)
+
+- **Auth (login/signup/sign out)** และ **Profile** (แก้ชื่อ-นามสกุล/รูปโปรไฟล์) — ยังคุยกับ Supabase Auth ตรงๆ จาก client เหมือนเดิม เพราะเป็น auth operation ไม่ใช่การเขียนตาราง business data (เหตุผลเดียวกับที่ตัดสินใจไว้ตั้งแต่ก่อนหน้านี้)
+- Database schema, RLS policies — ไม่มีการแก้ไขเลย
+- การอัปโหลดไฟล์ตรงจาก browser ขึ้น Supabase Storage (จาก Step "แก้ 413 upload bug") — ยังทำแบบเดิม แค่เปลี่ยนจากส่งเข้า Server Action เป็นส่งเข้า REST API แทน
+
+### ไฟล์ backend แบบเก่า (Server Actions) ที่ลบทิ้งแล้ว
+
+`vehicles/actions.ts`, `vehicles/[id]/maintenance/actions.ts`, `documents/actions.ts` — ไม่มีใครเรียกใช้แล้ว ถูกแทนที่ด้วย API routes ทั้งหมด
+
+### สถานะ
+
+ทดสอบผ่านจริงครบทุกโมดูล (API ตรง + browser จริง + smoke test รวมทั้งแอป ไม่มี console error) **แต่ยังไม่ได้ commit/push ขึ้น GitHub** ตามคำขอผู้ใช้ — รอทดสอบเองยืนยันก่อน ถ้าจะ push ต้องเช็คให้แน่ใจว่า deploy ขึ้น Vercel แล้ว environment variable ยังครบ (ไม่ต้องเพิ่มอะไรใหม่ เพราะ API routes ใช้ `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` ตัวเดิม)
+
 ## แจ้งเตือน
 
 Email เท่านั้นสำหรับ MVP — Supabase Edge Function + Cron job เช็ครายวัน ผ่าน Resend API (Step 8)

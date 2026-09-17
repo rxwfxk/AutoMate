@@ -1,29 +1,53 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { IdCard, Plus } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { useRouter } from "next/navigation";
+import { IdCard, Loader2, Plus } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+
+import { createClient } from "@/lib/supabase/client";
+import { apiFetch } from "@/lib/api-client";
 import { buttonVariants } from "@/components/ui/button";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { DocumentItem } from "@/components/documents/document-item";
+import type { Document } from "@/types/database.types";
 
-export const metadata: Metadata = {
-  title: "โปรไฟล์ | Vehicle Maintenance Log",
-};
+export default function ProfilePage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [drivingLicense, setDrivingLicense] = useState<Document | null | undefined>(undefined);
 
-export default async function ProfilePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  useEffect(() => {
+    document.title = "โปรไฟล์ | Vehicle Maintenance Log";
+  }, []);
 
-  if (!user) redirect("/login");
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        router.push("/login");
+        return;
+      }
+      setUser(data.user);
+    });
 
-  const { data: drivingLicense } = await supabase
-    .from("documents")
-    .select("*")
-    .eq("document_type", "driving_license")
-    .maybeSingle();
+    apiFetch<{ document: Document | null }>("/api/driving-license").then((result) => {
+      setDrivingLicense(result.error ? null : result.data!.document);
+    });
+  }, [router]);
+
+  function handleLicenseDeleted() {
+    setDrivingLicense(null);
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-1 items-center justify-center py-16">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 p-4 sm:p-6">
@@ -34,7 +58,7 @@ export default async function ProfilePage() {
 
       <div className="flex items-center justify-between">
         <h2 className="font-heading text-lg font-semibold tracking-tight">ใบขับขี่</h2>
-        {!drivingLicense && (
+        {!drivingLicense && drivingLicense !== undefined && (
           <Link
             href="/profile/driving-license"
             className={buttonVariants({ size: "sm", className: "gap-1.5" })}
@@ -45,11 +69,16 @@ export default async function ProfilePage() {
         )}
       </div>
 
-      {drivingLicense ? (
+      {drivingLicense === undefined ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : drivingLicense ? (
         <DocumentItem
           document={drivingLicense}
           editHref="/profile/driving-license"
-          revalidateTarget="/profile"
+          deleteUrl="/api/driving-license"
+          onDeleted={handleLicenseDeleted}
         />
       ) : (
         <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border py-10 text-center">

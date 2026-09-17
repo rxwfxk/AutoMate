@@ -10,9 +10,11 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Run on everything except static assets and Next's own image
-     * optimizer, so auth redirects don't block CSS/JS/images from loading.
+     * Run on everything except static assets, Next's own image optimizer,
+     * and /api/** — API routes authenticate themselves via a Bearer token
+     * (see src/lib/api/auth.ts) and must return a JSON 401, not this
+     * redirect-to-/login page behavior, when the caller isn't signed in.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

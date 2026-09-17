@@ -16,10 +16,12 @@ export function MaintenanceLogItem({
   log,
   vehicleId,
   currentMileage,
+  onDeleted,
 }: {
   log: MaintenanceLogWithType;
   vehicleId: string;
   currentMileage: number;
+  onDeleted?: (logId: string) => void;
 }) {
   const type = log.maintenance_types;
   const Icon = getMaintenanceIcon(type?.icon ?? null);
@@ -102,6 +104,7 @@ export function MaintenanceLogItem({
           logId={log.id}
           vehicleId={vehicleId}
           typeName={type?.name ?? "รายการนี้"}
+          onDeleted={onDeleted}
         />
       </div>
     </div>

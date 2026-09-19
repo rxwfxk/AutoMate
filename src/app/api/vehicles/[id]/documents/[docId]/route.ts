@@ -11,7 +11,7 @@ export async function PUT(request: Request, { params }: Params) {
   const auth = await authenticateRequest(request);
   if ("response" in auth) return auth.response;
   const { supabase } = auth;
-  const { docId } = await params;
+  const { id: vehicleId, docId } = await params;
 
   let body: unknown;
   try {
@@ -37,6 +37,7 @@ export async function PUT(request: Request, { params }: Params) {
       file_url: typeof file_url === "string" ? file_url : null,
     })
     .eq("id", docId)
+    .eq("vehicle_id", vehicleId)
     .select()
     .single();
 
@@ -49,18 +50,20 @@ export async function DELETE(request: Request, { params }: Params) {
   const auth = await authenticateRequest(request);
   if ("response" in auth) return auth.response;
   const { supabase } = auth;
-  const { docId } = await params;
+  const { id: vehicleId, docId } = await params;
 
   const { data: existing } = await supabase
     .from("documents")
     .select("file_url")
     .eq("id", docId)
+    .eq("vehicle_id", vehicleId)
     .single();
+  if (!existing) return fail("ไม่พบข้อมูล หรือคุณไม่มีสิทธิ์ลบ", 404);
 
-  const { error } = await supabase.from("documents").delete().eq("id", docId);
+  const { error } = await supabase.from("documents").delete().eq("id", docId).eq("vehicle_id", vehicleId);
   if (error) return fail(`ลบไม่สำเร็จ: ${error.message}`, 500);
 
-  if (existing?.file_url) {
+  if (existing.file_url) {
     await deleteDocumentFileByUrl(supabase, existing.file_url);
   }
 

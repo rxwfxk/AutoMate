@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, FileText, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Paperclip, Pencil, Plus } from "lucide-react";
 import { cn } from "cn";
 
 import { apiFetch } from "@/lib/api-client";
@@ -11,6 +11,7 @@ import { HistoryTag } from "@/components/redesign/status";
 import { getCurrentDocumentIds } from "@/lib/current-items";
 import { getDateFlagStatus, type FlagStatus } from "@/lib/flag-status";
 import { DOCUMENT_TYPE_ICON, DOCUMENT_TYPE_LABEL } from "@/lib/document-types";
+import { DeleteDocumentDialog } from "@/components/documents/delete-document-dialog";
 import { PageHeader } from "@/components/redesign/page-header";
 import { Chip } from "@/components/redesign/chip";
 import { StatusDot } from "@/components/redesign/status";
@@ -174,9 +175,8 @@ export default function DocumentsPage() {
             {visible.map(({ doc, status, superseded }) => {
               const Icon = DOCUMENT_TYPE_ICON[doc.document_type];
               return (
-                <Link
+                <div
                   key={doc.id}
-                  href={`/vehicles/${doc.vehicle_id}/documents/${doc.id}/edit`}
                   className={cn(
                     "flex gap-3 rounded-list border border-line bg-surface-card p-3.5",
                     status === "yellow" && "border-[1.5px] border-flag-due-soon bg-flag-due-soon-soft",
@@ -212,10 +212,36 @@ export default function DocumentsPage() {
                       <span className="font-sans">฿ </span>
                       {doc.cost.toLocaleString("th-TH")}
                     </p>
-                  ) : !doc.file_url ? (
-                    <span className="shrink-0 text-xs font-extrabold whitespace-nowrap text-cta">แนบไฟล์</span>
                   ) : null}
-                </Link>
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    {doc.file_url && (
+                      <a
+                        href={doc.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="ดูไฟล์เอกสาร"
+                        className="flex size-8 items-center justify-center rounded-icon text-cta hover:bg-base"
+                      >
+                        <Paperclip className="size-4" />
+                      </a>
+                    )}
+                    <Link
+                      href={`/vehicles/${doc.vehicle_id}/documents/${doc.id}/edit`}
+                      aria-label={`แก้ไข ${DOCUMENT_TYPE_LABEL[doc.document_type]}`}
+                      className="flex size-8 items-center justify-center rounded-icon text-ink-muted hover:bg-base"
+                    >
+                      <Pencil className="size-4" />
+                    </Link>
+                    <DeleteDocumentDialog
+                      docId={doc.id}
+                      label={DOCUMENT_TYPE_LABEL[doc.document_type]}
+                      deleteUrl={`/api/vehicles/${doc.vehicle_id}/documents/${doc.id}`}
+                      cost={doc.cost}
+                      hasFile={!!doc.file_url}
+                      onDeleted={(id) => setDocuments((prev) => prev?.filter((d) => d.id !== id) ?? prev)}
+                    />
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -305,7 +331,8 @@ export default function DocumentsPage() {
                   {visible.map(({ doc, status, superseded }) => {
                     const Icon = DOCUMENT_TYPE_ICON[doc.document_type];
                     return (
-                      <Link key={doc.id} href={`/vehicles/${doc.vehicle_id}/documents/${doc.id}/edit`}>
+                      // Actions sit beside the row (not inside a Link) so only the pencil opens the edit page.
+                      <div key={doc.id} className="relative">
                         <DataRow
                           className={
                             status === "yellow"
@@ -359,13 +386,38 @@ export default function DocumentsPage() {
                           </DataCell>
                           <DataCell width={84} className="text-right">
                             {doc.file_url ? (
-                              <span className="text-xs font-extrabold whitespace-nowrap text-cta">ดูไฟล์</span>
+                              <a
+                                href={doc.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-extrabold whitespace-nowrap text-cta hover:underline"
+                              >
+                                ดูไฟล์
+                              </a>
                             ) : (
                               <span className="text-xs font-bold whitespace-nowrap text-ink-faint">แนบไฟล์</span>
                             )}
                           </DataCell>
+                          <DataCell width={68} />
                         </DataRow>
-                      </Link>
+                        <div className="absolute top-1/2 right-4 flex -translate-y-1/2 items-center gap-0.5">
+                          <Link
+                            href={`/vehicles/${doc.vehicle_id}/documents/${doc.id}/edit`}
+                            aria-label={`แก้ไข ${DOCUMENT_TYPE_LABEL[doc.document_type]}`}
+                            className="flex size-8 items-center justify-center rounded-icon text-ink-muted hover:bg-base"
+                          >
+                            <Pencil className="size-4" />
+                          </Link>
+                          <DeleteDocumentDialog
+                            docId={doc.id}
+                            label={DOCUMENT_TYPE_LABEL[doc.document_type]}
+                            deleteUrl={`/api/vehicles/${doc.vehicle_id}/documents/${doc.id}`}
+                            cost={doc.cost}
+                            hasFile={!!doc.file_url}
+                            onDeleted={(id) => setDocuments((prev) => prev?.filter((d) => d.id !== id) ?? prev)}
+                          />
+                        </div>
+                      </div>
                     );
                   })}
                 </div>

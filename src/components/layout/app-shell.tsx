@@ -6,6 +6,7 @@ import type { User } from "@supabase/supabase-js";
 
 import { cn } from "cn";
 import { apiFetch } from "@/lib/api-client";
+import { DOCUMENTS_CHANGED_EVENT } from "@/components/documents/delete-document-dialog";
 import { currentDocuments } from "@/lib/current-items";
 import { getDateFlagStatus } from "@/lib/flag-status";
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -34,13 +35,20 @@ export function AppShell({
   // one hidden by CSS) instead of each asking /api/documents for the same dot.
   const [hasDocumentAlert, setHasDocumentAlert] = useState(false);
 
+  // Refetch on navigation (a save/redirect may have changed a document) and when a
+  // document is deleted in place (no navigation happens then).
   useEffect(() => {
-    apiFetch<Document[]>("/api/documents").then((result) => {
-      if (!result.error) {
-        setHasDocumentAlert(currentDocuments(result.data!).some((d) => getDateFlagStatus(d.expiry_date) !== "green"));
-      }
-    });
-  }, []);
+    function load() {
+      apiFetch<Document[]>("/api/documents").then((result) => {
+        if (!result.error) {
+          setHasDocumentAlert(currentDocuments(result.data!).some((d) => getDateFlagStatus(d.expiry_date) !== "green"));
+        }
+      });
+    }
+    load();
+    window.addEventListener(DOCUMENTS_CHANGED_EVENT, load);
+    return () => window.removeEventListener(DOCUMENTS_CHANGED_EVENT, load);
+  }, [pathname]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px) and (max-width: 1023.98px)");

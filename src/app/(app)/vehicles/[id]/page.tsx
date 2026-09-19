@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronDown, FileText, Loader2, Pencil, Plus, Wrench } from "lucide-react";
+import { ArrowLeft, ChevronDown, FileText, Loader2, Paperclip, Pencil, Plus, Wrench } from "lucide-react";
 import { cn } from "cn";
 
 import { apiFetch } from "@/lib/api-client";
@@ -436,7 +436,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                         return (
                           // Delete trigger sits beside the Link (not inside it) so it can't navigate.
                           <div key={log.id} className="relative">
-                          <Link href={`/vehicles/${vehicle.id}/maintenance/${log.id}/edit`}>
+                          <div>
                             <DataRow
                               className={
                                 status === "red" ? "border-[1.5px] border-flag-overdue bg-flag-overdue-soft" : undefined
@@ -455,7 +455,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                                   <p className="truncate text-xs font-semibold text-ink-muted">{interval}</p>
                                 )}
                               </DataCell>
-                              <DataCell width={160}>
+                              <DataCell width={140}>
                                 <p className="truncate font-mono text-sm text-ink">
                                   {new Date(log.service_date).toLocaleDateString("th-TH", {
                                     year: "numeric",
@@ -468,7 +468,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                                   <p className="truncate text-xs text-ink-3">{log.shop_name}</p>
                                 )}
                               </DataCell>
-                              <DataCell width={155}>
+                              <DataCell width={130}>
                                 {(log.next_due_date || log.next_due_mileage) && (
                                   <>
                                     <p className={cn("truncate font-mono text-sm", history ? "text-ink-muted" : DUE_TEXT_COLOR[status])}>
@@ -490,7 +490,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                                   </>
                                 )}
                               </DataCell>
-                              <DataCell width={88} className="text-right">
+                              <DataCell width={76} className="text-right">
                                 {log.cost !== null && (
                                   <p className="font-mono text-sm whitespace-nowrap text-ink-3">
                                     <span className="font-sans">฿ </span>
@@ -498,10 +498,29 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                                   </p>
                                 )}
                               </DataCell>
-                              <DataCell width={32} />
+                              <DataCell width={104} />
                             </DataRow>
-                          </Link>
-                          <div className="absolute top-1/2 right-4 -translate-y-1/2">
+                          </div>
+                          <div className="absolute top-1/2 right-4 flex -translate-y-1/2 items-center gap-0.5">
+                            {log.receipt_image_url && (
+                              <a
+                                href={log.receipt_image_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={"ดูใบเสร็จ"}
+                                title={"ดูใบเสร็จ"}
+                                className="flex size-8 items-center justify-center rounded-icon text-cta hover:bg-base"
+                              >
+                                <Paperclip className="size-4" />
+                              </a>
+                            )}
+                            <Link
+                              href={`/vehicles/${vehicle.id}/maintenance/${log.id}/edit`}
+                              aria-label={`แก้ไขบันทึก ${log.maintenance_types?.name ?? ""}`}
+                              className="flex size-8 items-center justify-center rounded-icon text-ink-muted hover:bg-base"
+                            >
+                              <Pencil className="size-4" />
+                            </Link>
                             <DeleteMaintenanceLogDialog
                               logId={log.id}
                               vehicleId={vehicle.id}
@@ -536,7 +555,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                       // The delete trigger sits over the row's right edge instead of inside
                       // the Link, so clicking it can't also navigate to the edit page.
                       <div key={document.id} className="relative">
-                      <Link href={`/vehicles/${vehicle.id}/documents/${document.id}/edit`}>
+                      <div>
                         <DataRow
                           className={
                             status === "yellow" ? "border-[1.5px] border-flag-due-soon bg-flag-due-soon-soft" : undefined
@@ -574,10 +593,29 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                               </p>
                             )}
                           </DataCell>
-                          <DataCell width={32} />
+                          <DataCell width={104} />
                         </DataRow>
-                      </Link>
-                      <div className="absolute top-1/2 right-4 -translate-y-1/2">
+                      </div>
+                      <div className="absolute top-1/2 right-4 flex -translate-y-1/2 items-center gap-0.5">
+                        {document.file_url && (
+                              <a
+                                href={document.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={"ดูไฟล์เอกสาร"}
+                                title={"ดูไฟล์เอกสาร"}
+                                className="flex size-8 items-center justify-center rounded-icon text-cta hover:bg-base"
+                              >
+                                <Paperclip className="size-4" />
+                              </a>
+                            )}
+                            <Link
+                          href={`/vehicles/${vehicle.id}/documents/${document.id}/edit`}
+                          aria-label={`แก้ไข ${DOCUMENT_TYPE_LABEL[document.document_type]}`}
+                          className="flex size-8 items-center justify-center rounded-icon text-ink-muted hover:bg-base"
+                        >
+                          <Pencil className="size-4" />
+                        </Link>
                         <DeleteDocumentDialog
                           docId={document.id}
                           label={DOCUMENT_TYPE_LABEL[document.document_type]}

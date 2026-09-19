@@ -3,6 +3,8 @@
 import { apiFetch } from "@/lib/api-client";
 import { ConfirmDeleteDialog, bahtValue, type ImpactRow } from "@/components/redesign/confirm-delete-dialog";
 
+export const DOCUMENTS_CHANGED_EVENT = "documents-changed";
+
 export function DeleteDocumentDialog({
   docId,
   label,
@@ -36,7 +38,10 @@ export function DeleteDocumentDialog({
       impactRows={impactRows}
       confirmLabel="ลบเอกสาร"
       onConfirm={() => apiFetch(deleteUrl, { method: "DELETE" })}
-      onDeleted={() => onDeleted?.(docId)}
+      onDeleted={() => {
+        window.dispatchEvent(new Event(DOCUMENTS_CHANGED_EVENT));
+        onDeleted?.(docId);
+      }}
     />
   );
 }

@@ -221,6 +221,16 @@ src/app/api/**                        ← Backend ล้วนๆ (Next.js Route
 - **refactor**: `getMostUrgentItem` เป็น wrapper ของ `getTopUrgentItems(..., 1)[0]`; สีกราฟรวมที่ `src/lib/chart-colors.ts`; `formatDueLabel()` ตัวเดียวในหน้า `/documents` (และ `daysUntil` นับจากเที่ยงคืนท้องถิ่นเหมือน `getDateFlagStatus`); AppShell ยิง `/api/documents` ครั้งเดียวแล้วส่ง `hasDocumentAlert` ให้ sidebar+bottom nav; dialog ลบรถ/ลบบันทึกรับ prop `detail` จากหน้าแม่เพื่อไม่ต้อง fetch ซ้ำ (`vehicle-card.tsx` ไม่มีข้อมูลจึงยัง fetch ตอนเปิดเหมือนเดิม)
 - หมายเหตุการทดสอบ: ใน `next dev` effect ทำงานสองรอบ (StrictMode) จึงเห็น request ซ้ำ — นับ request ต้องดูบน `next build && next start`
 
+### งานหลังรอบตรวจโค้ด (2026-09-19) — ปุ่มลบ, ยืนยันออกจากระบบ, รายการเก่าเป็น "ประวัติ"
+
+- **ยืนยันก่อนออกจากระบบ**: `src/components/layout/sign-out-dialog.tsx` (เป็นเจ้าของ logic sign out เอง; sidebar และหน้าโปรไฟล์มือถือใช้ตัวนี้ ไม่เรียก `signOut` ตรงๆ อีก)
+- **ปุ่มลบบนเดสก์ท็อป**: ลบรถ (header หน้ารายละเอียดรถ + มุมการ์ดในหน้ารายการรถ), ลบเอกสาร/ลบบันทึกซ่อมบำรุง (ถังขยะท้ายแถวตาราง + ปุ่มใน header หน้าแก้ไข), ปุ่ม "+ เพิ่มเอกสาร" ใน header หน้ารายละเอียดรถ — ปุ่มท้ายแถววางเป็น sibling ของ `<Link>` แบบ `absolute` (ห้ามซ้อนปุ่มใน `<a>` ไม่งั้นกดแล้วพาไปหน้าแก้ไขด้วย); `ConfirmDeleteDialog` รับ `triggerClassName` ที่ **แทนที่** ค่า default (เพราะ `cn` ที่ใช้เป็นแค่ตัวต่อ class ไม่ dedupe Tailwind); `DeleteVehicleDialog` ยิง event `vehicles-changed` ให้ badge จำนวนรถใน sidebar รีเฟรช
+- **กติกา "รายการเก่า = ประวัติ"** (`src/lib/current-items.ts`): เมื่อบันทึกซ้ำประเภทเดิม จะนับเตือนเฉพาะรายการล่าสุดต่อ (รถ + ประเภท) — เอกสารเลือกจาก `expiry_date` มากสุด (ต่ออายุ = วันหมดอายุใหม่กว่า) เสมอกันดู `created_at`; บันทึกซ่อมเลือกจาก `service_date` มากสุด. รายการเก่ายังอยู่ในประวัติแต่ไม่ขึ้นธง/ไม่นับใน dashboard, การ์ดงานด่วน, สถานะรวมรถ, จุดเตือนเมนู "เอกสาร". ใช้ `getCurrentLogIds`/`getCurrentDocumentIds`/`currentLogs`/`currentDocuments`; ฟังก์ชันใน `dashboard-data.ts` กรองภายในเอง. UI ของรายการเก่า: จุด/ไอคอนเทา (`StatusDot status="history"`), ป้าย `HistoryTag` "ประวัติ", วันที่สีเทา (ตารางซ่อมบำรุงเดสก์ท็อปไม่ใส่ป้ายเพราะบีบชื่อ ใช้จุดเทา + ข้อความ "ประวัติ" แทน); `MaintenanceLogItem`/`DocumentItem` รับ prop `superseded`. เอกสารเรียงตามที่บันทึกล่าสุดขึ้นบน (หน้า `/documents` และหน้ารถ)
+- **หน้าแก้ไขบันทึกซ่อมบำรุง** มี layout เดสก์ท็อปแล้ว; ปุ่มลบมือถืออยู่ในการ์ดรายการเหมือนเดิม
+- ทดสอบด้วย Playwright + บัญชี QA ชั่วคราว 1440/390px ผ่านหมด (13/13) commit `cf59037` push แล้ว
+- **ข้อสังเกตที่ยังไม่แก้**: stats ใน hero การ์ดมืดหน้ารายละเอียดรถอัดแน่นที่ ~1100px; `PUT/DELETE /api/vehicles/[id]/documents/[docId]` ยังไม่กรอง `vehicle_id` (ไม่มี mileage sync จึงเสี่ยงต่ำ); แท็บเล็ตไม่มี bottom sheet "เพิ่มบันทึก" (bottom nav ซ่อน)
+- **บทเรียนการทดสอบ**: `taskkill /IM node.exe` ฆ่า dev server ด้วย — ปิดเฉพาะ PID ของพอร์ต 3000; ถ้าสคริปต์ QA ค้างแล้วถูกฆ่า `finally` ไม่ทำงาน ต้องลบ user `@qa-test.dev` เองผ่าน Admin API
+
 ### วิธีทดสอบตลอดการรีดีไซน์
 
 ทุก step ใช้บัญชี QA ชั่วคราวสร้างผ่าน Supabase Admin API (`email_confirm:true`) + สคริปต์ Playwright ชั่วคราว ยืนยันด้วย screenshot จริง + เช็ค `console --errors` ทุกครั้ง (ไม่ใช่แค่ตรวจโค้ด/build ผ่าน) แล้วลบข้อมูลทดสอบ/สคริปต์ทิ้งหลังใช้เสมอตามธรรมเนียมโปรเจกต์ — double-submit guard ที่แก้ไว้ตั้งแต่ Step 9 เดิม ถูกทดสอบซ้ำทุกฟอร์มที่เขียนใหม่ (ยังทำงานถูกต้อง ไม่มีการรีเกรส)

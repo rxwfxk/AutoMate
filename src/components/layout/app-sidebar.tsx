@@ -2,15 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { Bike, FileText, Gauge, Home, Loader2, LogOut, Menu, UserRound } from "lucide-react";
+import { Bike, FileText, Gauge, Home, LogOut, Menu, UserRound } from "lucide-react";
 
 import { cn } from "cn";
-import { createClient } from "@/lib/supabase/client";
 import { apiFetch } from "@/lib/api-client";
 import { getAvatarUrl, getDisplayName, getInitials } from "@/lib/user-display";
+import { SignOutDialog } from "@/components/layout/sign-out-dialog";
 import { VEHICLES_CHANGED_EVENT } from "@/components/vehicles/delete-vehicle-dialog";
 import type { Vehicle } from "@/types/database.types";
 
@@ -37,8 +37,6 @@ export function AppSidebar({
   onToggleCollapsed?: () => void;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [isSigningOut, setIsSigningOut] = useState(false);
   const [vehicleCount, setVehicleCount] = useState<number | null>(null);
 
   // Refetch on navigation (covers adding a vehicle, which lands on /vehicles)
@@ -52,14 +50,6 @@ export function AppSidebar({
     window.addEventListener(VEHICLES_CHANGED_EVENT, load);
     return () => window.removeEventListener(VEHICLES_CHANGED_EVENT, load);
   }, [pathname]);
-
-  async function handleSignOut() {
-    setIsSigningOut(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
 
   return (
     <div className="flex h-full flex-col gap-5.5 bg-ink p-4">
@@ -157,16 +147,10 @@ export function AppSidebar({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={handleSignOut}
-          disabled={isSigningOut}
-          aria-label="ออกจากระบบ"
-          className="flex items-center justify-center gap-1.5 rounded-icon border-[1.5px] border-ink-line p-2.5 text-sm font-bold text-surface disabled:opacity-50"
-        >
-          {isSigningOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+        <SignOutDialog triggerClassName="flex items-center justify-center gap-1.5 rounded-icon border-[1.5px] border-ink-line p-2.5 text-sm font-bold text-surface">
+          <LogOut className="size-4" />
           {!collapsed && "ออกจากระบบ"}
-        </button>
+        </SignOutDialog>
       </div>
     </div>
   );

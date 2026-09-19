@@ -11,6 +11,7 @@ import { apiFetch } from "@/lib/api-client";
 import { getDateFlagStatus } from "@/lib/flag-status";
 import { getUsageSummary } from "@/lib/dashboard-data";
 import { buildAccountDataCsv, downloadCsv } from "@/lib/export-csv";
+import { SignOutDialog } from "@/components/layout/sign-out-dialog";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { PageHeader } from "@/components/redesign/page-header";
 import { StatusBadge } from "@/components/redesign/status";
@@ -26,20 +27,11 @@ export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [drivingLicense, setDrivingLicense] = useState<Document | null | undefined>(undefined);
-  const [isSigningOut, setIsSigningOut] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
     document.title = "โปรไฟล์ | Vehicle Maintenance Log";
   }, []);
-
-  async function handleSignOut() {
-    setIsSigningOut(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -123,15 +115,9 @@ export default function ProfilePage() {
         {/* Desktop already has this in the sidebar — this is the only way to
             reach it on mobile now that the drawer is gone in favor of the
             bottom nav (see mobile-bottom-nav.tsx). */}
-        <button
-          type="button"
-          onClick={handleSignOut}
-          disabled={isSigningOut}
-          aria-label="ออกจากระบบ"
-          className="flex size-9.5 items-center justify-center rounded-icon border-[1.5px] border-line-strong text-ink disabled:opacity-50 lg:hidden"
-        >
-          {isSigningOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-        </button>
+        <SignOutDialog triggerClassName="flex size-9.5 items-center justify-center rounded-icon border-[1.5px] border-line-strong text-ink lg:hidden">
+          <LogOut className="size-4" />
+        </SignOutDialog>
       </div>
 
       {/* Single column on mobile; two columns on desktop so the page uses the

@@ -95,6 +95,10 @@ export function AppShell({
         className={cn(
           "sticky top-0 hidden h-screen shrink-0 border-r border-ink-line transition-[width] duration-150 md:flex md:flex-col",
           isTablet || collapsed ? "w-16" : "w-64",
+          // `sticky` makes the aside its own stacking context, so the fixed backdrop/sidebar
+          // inside it (z-40/50) would otherwise still paint UNDER positioned page content
+          // (e.g. `relative` card images) that comes later in the DOM. Lift the whole aside.
+          overlay && "z-50",
         )}
       >
         {overlay && (

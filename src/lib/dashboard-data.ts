@@ -1,4 +1,5 @@
 import { getDateFlagStatus, getMaintenanceFlagStatus, worseFlag, type FlagStatus } from "@/lib/flag-status";
+import { currentDocuments, currentLogs } from "@/lib/current-items";
 import { DOCUMENT_TYPE_LABEL } from "@/lib/document-types";
 import type { MaintenanceLogWithType } from "@/components/maintenance/maintenance-log-item";
 import type { Document } from "@/types/database.types";
@@ -12,8 +13,8 @@ export function getVehicleOverallStatus(
   logs: MaintenanceLogWithType[],
   documents: Document[],
 ): FlagStatus | null {
-  const vehicleLogs = logs.filter((l) => l.vehicle_id === vehicleId);
-  const vehicleDocs = documents.filter((d) => d.vehicle_id === vehicleId);
+  const vehicleLogs = currentLogs(logs.filter((l) => l.vehicle_id === vehicleId));
+  const vehicleDocs = currentDocuments(documents.filter((d) => d.vehicle_id === vehicleId));
   if (vehicleLogs.length === 0 && vehicleDocs.length === 0) return null;
 
   let status: FlagStatus = "green";
@@ -42,7 +43,7 @@ export function countActionableItems(
   documents: Document[],
 ): number {
   let count = 0;
-  for (const log of logs) {
+  for (const log of currentLogs(logs)) {
     const currentMileage = vehicleMileageById.get(log.vehicle_id) ?? 0;
     const status = getMaintenanceFlagStatus({
       nextDueDate: log.next_due_date,
@@ -52,7 +53,7 @@ export function countActionableItems(
     });
     if (status !== "green") count++;
   }
-  for (const doc of documents) {
+  for (const doc of currentDocuments(documents)) {
     if (getDateFlagStatus(doc.expiry_date) !== "green") count++;
   }
   return count;
@@ -97,7 +98,7 @@ export function getTopUrgentItems(
 ): UrgentItem[] {
   const items: UrgentItem[] = [];
 
-  for (const log of logs) {
+  for (const log of currentLogs(logs)) {
     const currentMileage = vehicleMileageById.get(log.vehicle_id) ?? 0;
     const status = getMaintenanceFlagStatus({
       nextDueDate: log.next_due_date,
@@ -117,7 +118,7 @@ export function getTopUrgentItems(
     });
   }
 
-  for (const doc of documents) {
+  for (const doc of currentDocuments(documents)) {
     if (!doc.vehicle_id) continue; // driving license — handled separately, not vehicle-scoped
     const status = getDateFlagStatus(doc.expiry_date);
     if (status === "green") continue;

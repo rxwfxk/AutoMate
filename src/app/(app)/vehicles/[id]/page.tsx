@@ -14,10 +14,11 @@ import {
   type FlagStatus,
 } from "@/lib/flag-status";
 import { getMostUrgentItem } from "@/lib/dashboard-data";
+import { getCurrentDocumentIds, getCurrentLogIds } from "@/lib/current-items";
 import { DOCUMENT_TYPE_LABEL } from "@/lib/document-types";
 import { Card } from "@/components/redesign/card";
 import { Button, buttonVariants } from "@/components/redesign/button";
-import { StatusDot, StatusBadge } from "@/components/redesign/status";
+import { StatusDot, StatusBadge, HistoryTag } from "@/components/redesign/status";
 import { PlaceholderImage } from "@/components/redesign/placeholder-image";
 import { PageHeader, Breadcrumb } from "@/components/redesign/page-header";
 import { Chip } from "@/components/redesign/chip";
@@ -28,6 +29,8 @@ import {
   type MaintenanceLogWithType,
 } from "@/components/maintenance/maintenance-log-item";
 import { DocumentItem } from "@/components/documents/document-item";
+import { DeleteMaintenanceLogDialog } from "@/components/maintenance/delete-maintenance-log-dialog";
+import { DeleteDocumentDialog } from "@/components/documents/delete-document-dialog";
 import type { Document, Vehicle } from "@/types/database.types";
 
 type VehicleDetailResponse = {
@@ -136,15 +139,24 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
     setResult((prev) => (prev ? { ...prev, vehicle: { ...prev.vehicle, current_mileage: value } } : prev));
   }
 
+  // Only the newest record per type raises a flag; older ones are history.
+  const currentLogIds = getCurrentLogIds(logs);
+  const currentDocIds = getCurrentDocumentIds(documents);
   const logStatuses = logs.map((log) =>
-    getMaintenanceFlagStatus({
+    !currentLogIds.has(log.id)
+      ? ("green" as FlagStatus)
+      : getMaintenanceFlagStatus({
       nextDueDate: log.next_due_date,
       nextDueMileage: log.next_due_mileage,
       currentMileage: vehicle.current_mileage,
       intervalKm: log.maintenance_types?.default_interval_km,
     }),
   );
-  const documentStatuses = documents.map((document) => getDateFlagStatus(document.expiry_date));
+  const documentStatusOf = (document: Document): FlagStatus =>
+    currentDocIds.has(document.id) ? getDateFlagStatus(document.expiry_date) : "green";
+  const documentStatuses = documents.map(documentStatusOf);
+  // Newest record first (by when it was saved), so a renewal sits above the one it replaced.
+  const sortedDocuments = [...documents].sort((a, b) => b.created_at.localeCompare(a.created_at));
   const allStatuses = [...logStatuses, ...documentStatuses];
   const worst = allStatuses.reduce<FlagStatus>((acc, status) => worseFlag(acc, status), "green");
   const attentionCount = allStatuses.filter((status) => status !== "green").length;
@@ -261,6 +273,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                   vehicleId={vehicle.id}
                   currentMileage={vehicle.current_mileage}
                   vehicleDetail={result}
+                  superseded={!currentLogIds.has(log.id)}
                   onDeleted={handleLogDeleted}
                 />
               ))}
@@ -273,9 +286,10 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
           )
         ) : documents.length > 0 ? (
           <div className="flex flex-col gap-2.25">
-            {documents.map((document) => (
+            {sortedDocuments.map((document) => (
               <DocumentItem
                 key={document.id}
+                superseded={!currentDocIds.has(document.id)}
                 document={document}
                 editHref={`/vehicles/${vehicle.id}/documents/${document.id}/edit`}
                 deleteUrl={`/api/vehicles/${vehicle.id}/documents/${document.id}`}
@@ -330,6 +344,12 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                 className="flex items-center rounded-[16px] border-[1.5px] border-line-strong px-4.5 py-3.25 text-[15px] font-extrabold text-ink"
               >
                 แก้ไขข้อมูลรถ
+              </Link>
+              <Link
+                href={`/vehicles/${vehicle.id}/documents/new`}
+                className="flex items-center rounded-[16px] border-[1.5px] border-line-strong px-4.5 py-3.25 text-[15px] font-extrabold text-ink"
+              >
+                + เพิ่มเอกสาร
               </Link>
               <Link
                 href={`/vehicles/${vehicle.id}/maintenance/new`}
@@ -412,20 +432,25 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                     <div className="flex flex-col gap-2">
                       {(showAllLogs ? sortedLogs : sortedLogs.slice(0, 3)).map(({ log, status }) => {
                         const interval = formatStandardInterval(log.maintenance_types);
+                        const history = !currentLogIds.has(log.id);
                         return (
-                          <Link key={log.id} href={`/vehicles/${vehicle.id}/maintenance/${log.id}/edit`}>
+                          // Delete trigger sits beside the Link (not inside it) so it can't navigate.
+                          <div key={log.id} className="relative">
+                          <Link href={`/vehicles/${vehicle.id}/maintenance/${log.id}/edit`}>
                             <DataRow
                               className={
                                 status === "red" ? "border-[1.5px] border-flag-overdue bg-flag-overdue-soft" : undefined
                               }
                             >
                               <DataCell width={14}>
-                                <StatusDot status={status} />
+                                <StatusDot status={history ? "history" : status} />
                               </DataCell>
                               <DataCell flex>
-                                <p className="truncate text-base font-extrabold text-ink">
-                                  {log.maintenance_types?.name ?? "ไม่ระบุประเภท"}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className={cn("truncate text-base font-extrabold", history ? "text-ink-3" : "text-ink")}>
+                                    {log.maintenance_types?.name ?? "ไม่ระบุประเภท"}
+                                  </p>
+                                </div>
                                 {interval && (
                                   <p className="truncate text-xs font-semibold text-ink-muted">{interval}</p>
                                 )}
@@ -446,7 +471,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                               <DataCell width={155}>
                                 {(log.next_due_date || log.next_due_mileage) && (
                                   <>
-                                    <p className={cn("truncate font-mono text-sm", DUE_TEXT_COLOR[status])}>
+                                    <p className={cn("truncate font-mono text-sm", history ? "text-ink-muted" : DUE_TEXT_COLOR[status])}>
                                       {log.next_due_mileage
                                         ? `${log.next_due_mileage.toLocaleString("th-TH")} กม.`
                                         : ""}
@@ -459,8 +484,8 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                                           })
                                         : ""}
                                     </p>
-                                    <p className={cn("text-xs font-bold", DUE_TEXT_COLOR[status])}>
-                                      {status === "red" ? "เลยกำหนดแล้ว" : status === "yellow" ? "ใกล้ครบกำหนด" : "ยังไม่ถึงกำหนด"}
+                                    <p className={cn("text-xs font-bold", history ? "text-ink-muted" : DUE_TEXT_COLOR[status])}>
+                                      {history ? "ประวัติ" : status === "red" ? "เลยกำหนดแล้ว" : status === "yellow" ? "ใกล้ครบกำหนด" : "ยังไม่ถึงกำหนด"}
                                     </p>
                                   </>
                                 )}
@@ -473,8 +498,19 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                                   </p>
                                 )}
                               </DataCell>
+                              <DataCell width={32} />
                             </DataRow>
                           </Link>
+                          <div className="absolute top-1/2 right-4 -translate-y-1/2">
+                            <DeleteMaintenanceLogDialog
+                              logId={log.id}
+                              vehicleId={vehicle.id}
+                              typeName={log.maintenance_types?.name ?? "รายการนี้"}
+                              detail={result}
+                              onDeleted={handleLogDeleted}
+                            />
+                          </div>
+                          </div>
                         );
                       })}
                     </div>
@@ -493,31 +529,35 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                 )
               ) : documents.length > 0 ? (
                 <div className="flex flex-col gap-2">
-                  {documents.map((document) => {
-                    const status = getDateFlagStatus(document.expiry_date);
+                  {sortedDocuments.map((document) => {
+                    const status = documentStatusOf(document);
+                    const history = !currentDocIds.has(document.id);
                     return (
-                      <Link
-                        key={document.id}
-                        href={`/vehicles/${vehicle.id}/documents/${document.id}/edit`}
-                      >
+                      // The delete trigger sits over the row's right edge instead of inside
+                      // the Link, so clicking it can't also navigate to the edit page.
+                      <div key={document.id} className="relative">
+                      <Link href={`/vehicles/${vehicle.id}/documents/${document.id}/edit`}>
                         <DataRow
                           className={
                             status === "yellow" ? "border-[1.5px] border-flag-due-soon bg-flag-due-soon-soft" : undefined
                           }
                         >
                           <DataCell width={14}>
-                            <StatusDot status={status} />
+                            <StatusDot status={history ? "history" : status} />
                           </DataCell>
                           <DataCell flex>
-                            <p className="truncate text-base font-extrabold text-ink">
-                              {DOCUMENT_TYPE_LABEL[document.document_type]}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className={cn("truncate text-base font-extrabold", history ? "text-ink-3" : "text-ink")}>
+                                {DOCUMENT_TYPE_LABEL[document.document_type]}
+                              </p>
+                              {history && <HistoryTag />}
+                            </div>
                             {document.policy_number && (
                               <p className="truncate text-xs text-ink-3">{document.policy_number}</p>
                             )}
                           </DataCell>
                           <DataCell width={155}>
-                            <p className={cn("truncate font-mono text-sm", DUE_TEXT_COLOR[status])}>
+                            <p className={cn("truncate font-mono text-sm", history ? "text-ink-muted" : DUE_TEXT_COLOR[status])}>
                               หมดอายุ{" "}
                               {new Date(document.expiry_date).toLocaleDateString("th-TH", {
                                 year: "numeric",
@@ -534,8 +574,20 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                               </p>
                             )}
                           </DataCell>
+                          <DataCell width={32} />
                         </DataRow>
                       </Link>
+                      <div className="absolute top-1/2 right-4 -translate-y-1/2">
+                        <DeleteDocumentDialog
+                          docId={document.id}
+                          label={DOCUMENT_TYPE_LABEL[document.document_type]}
+                          deleteUrl={`/api/vehicles/${vehicle.id}/documents/${document.id}`}
+                          cost={document.cost}
+                          hasFile={!!document.file_url}
+                          onDeleted={handleDocumentDeleted}
+                        />
+                      </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -591,14 +643,17 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                 </button>
               </div>
               {documents.length > 0 ? (
-                documents.map((document) => {
-                  const status = getDateFlagStatus(document.expiry_date);
+                sortedDocuments.map((document) => {
+                  const status = documentStatusOf(document);
+                  const history = !currentDocIds.has(document.id);
                   return (
                     <div key={document.id} className="flex items-center gap-3">
                       <div
                         className={cn(
                           "flex size-8.5 shrink-0 items-center justify-center rounded-icon",
-                          status === "red"
+                          history
+                            ? "bg-line text-ink-muted"
+                            : status === "red"
                             ? "bg-flag-overdue-soft text-flag-overdue-soft-foreground"
                             : status === "yellow"
                               ? "bg-flag-due-soon-soft text-flag-due-soon-soft-foreground"
@@ -608,10 +663,13 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                         <FileText className="size-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[15px] font-extrabold text-ink">
-                          {DOCUMENT_TYPE_LABEL[document.document_type]}
-                        </p>
-                        <p className={cn("font-mono text-xs whitespace-nowrap", DUE_TEXT_COLOR[status])}>
+                        <div className="flex items-center gap-2">
+                          <p className={cn("truncate text-[15px] font-extrabold", history ? "text-ink-3" : "text-ink")}>
+                            {DOCUMENT_TYPE_LABEL[document.document_type]}
+                          </p>
+                          {history && <HistoryTag />}
+                        </div>
+                        <p className={cn("font-mono text-xs whitespace-nowrap", history ? "text-ink-muted" : DUE_TEXT_COLOR[status])}>
                           {new Date(document.expiry_date).toLocaleDateString("th-TH", {
                             year: "numeric",
                             month: "short",

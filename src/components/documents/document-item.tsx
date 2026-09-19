@@ -5,6 +5,7 @@ import { cn } from "cn";
 import { getDateFlagStatus, type FlagStatus } from "@/lib/flag-status";
 import { DOCUMENT_TYPE_ICON, DOCUMENT_TYPE_LABEL } from "@/lib/document-types";
 import { Card } from "@/components/redesign/card";
+import { HistoryTag } from "@/components/redesign/status";
 import { DeleteDocumentDialog } from "@/components/documents/delete-document-dialog";
 import type { Document } from "@/types/database.types";
 
@@ -24,16 +25,19 @@ export function DocumentItem({
   document,
   editHref,
   deleteUrl,
+  superseded = false,
   onDeleted,
 }: {
   document: Document;
   editHref: string;
   deleteUrl: string;
+  /** A newer record of the same type exists — history only, no flag. */
+  superseded?: boolean;
   onDeleted?: (docId: string) => void;
 }) {
   const Icon = DOCUMENT_TYPE_ICON[document.document_type];
   const label = DOCUMENT_TYPE_LABEL[document.document_type];
-  const status = getDateFlagStatus(document.expiry_date);
+  const status: FlagStatus = superseded ? "green" : getDateFlagStatus(document.expiry_date);
 
   return (
     <Card
@@ -44,18 +48,26 @@ export function DocumentItem({
         status === "red" && "border-[1.5px] border-flag-overdue bg-flag-overdue-soft",
       )}
     >
-      <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-icon", ICON_BG[status])}>
+      <div
+        className={cn(
+          "flex size-10 shrink-0 items-center justify-center rounded-icon",
+          superseded ? "bg-line text-ink-muted" : ICON_BG[status],
+        )}
+      >
         <Icon className="size-5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <h3 className="text-base font-extrabold text-ink">{label}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className={cn("text-base font-extrabold", superseded ? "text-ink-3" : "text-ink")}>{label}</h3>
+          {superseded && <HistoryTag />}
+        </div>
 
         {document.policy_number && (
           <p className="mt-0.5 text-[13px] text-ink-3">เลขที่ {document.policy_number}</p>
         )}
 
-        <p className={cn("mt-0.5 font-mono text-[13px]", DUE_TEXT_COLOR[status])}>
+        <p className={cn("mt-0.5 font-mono text-[13px]", superseded ? "text-ink-muted" : DUE_TEXT_COLOR[status])}>
           หมดอายุ{" "}
           {new Date(document.expiry_date).toLocaleDateString("th-TH", {
             year: "numeric",

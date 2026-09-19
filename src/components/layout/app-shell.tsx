@@ -6,6 +6,7 @@ import type { User } from "@supabase/supabase-js";
 
 import { cn } from "cn";
 import { apiFetch } from "@/lib/api-client";
+import { currentDocuments } from "@/lib/current-items";
 import { getDateFlagStatus } from "@/lib/flag-status";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
@@ -36,7 +37,7 @@ export function AppShell({
   useEffect(() => {
     apiFetch<Document[]>("/api/documents").then((result) => {
       if (!result.error) {
-        setHasDocumentAlert(result.data!.some((d) => getDateFlagStatus(d.expiry_date) !== "green"));
+        setHasDocumentAlert(currentDocuments(result.data!).some((d) => getDateFlagStatus(d.expiry_date) !== "green"));
       }
     });
   }, []);

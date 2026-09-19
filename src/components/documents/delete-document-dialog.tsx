@@ -9,6 +9,7 @@ export function DeleteDocumentDialog({
   deleteUrl,
   cost,
   hasFile,
+  triggerClassName,
   onDeleted,
 }: {
   docId: string;
@@ -18,6 +19,7 @@ export function DeleteDocumentDialog({
   deleteUrl: string;
   cost?: number | null;
   hasFile?: boolean;
+  triggerClassName?: string;
   onDeleted?: (docId: string) => void;
 }) {
   const impactRows: ImpactRow[] = [
@@ -28,6 +30,7 @@ export function DeleteDocumentDialog({
   return (
     <ConfirmDeleteDialog
       triggerAriaLabel={`ลบ ${label}`}
+      triggerClassName={triggerClassName}
       title={`ลบ "${label}"?`}
       description="การกระทำนี้ย้อนกลับไม่ได้"
       impactRows={impactRows}

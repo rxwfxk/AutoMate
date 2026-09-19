@@ -14,6 +14,7 @@ export function DeleteMaintenanceLogDialog({
   vehicleId,
   typeName,
   detail,
+  triggerClassName,
   onDeleted,
 }: {
   logId: string;
@@ -21,6 +22,7 @@ export function DeleteMaintenanceLogDialog({
   typeName: string;
   /** Pass what the page already holds to skip the refetch on open. */
   detail?: VehicleDetailResponse;
+  triggerClassName?: string;
   onDeleted?: (logId: string) => void;
 }) {
   const [impactRows, setImpactRows] = useState<ImpactRow[] | null | undefined>(undefined);
@@ -84,6 +86,7 @@ export function DeleteMaintenanceLogDialog({
   return (
     <ConfirmDeleteDialog
       triggerAriaLabel={`ลบบันทึก ${typeName}`}
+      triggerClassName={triggerClassName}
       title={`ลบบันทึก "${typeName}"?`}
       description="การกระทำนี้ย้อนกลับไม่ได้"
       impactRows={impactRows}

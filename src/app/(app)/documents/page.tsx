@@ -7,6 +7,8 @@ import { ArrowLeft, FileText, Loader2, Plus } from "lucide-react";
 import { cn } from "cn";
 
 import { apiFetch } from "@/lib/api-client";
+import { HistoryTag } from "@/components/redesign/status";
+import { getCurrentDocumentIds } from "@/lib/current-items";
 import { getDateFlagStatus, type FlagStatus } from "@/lib/flag-status";
 import { DOCUMENT_TYPE_ICON, DOCUMENT_TYPE_LABEL } from "@/lib/document-types";
 import { PageHeader } from "@/components/redesign/page-header";
@@ -63,10 +65,15 @@ export default function DocumentsPage() {
     });
   }, []);
 
-  const withStatus = useMemo(
-    () => (documents ?? []).map((doc) => ({ doc, status: getDateFlagStatus(doc.expiry_date) })),
-    [documents],
-  );
+  // A renewed document replaces the old one for alerts: older records stay listed
+  // as history (flag "green", `superseded`) but never raise a reminder.
+  const withStatus = useMemo(() => {
+    const currentIds = getCurrentDocumentIds(documents ?? []);
+    return (documents ?? []).map((doc) => {
+      const superseded = !currentIds.has(doc.id);
+      return { doc, superseded, status: superseded ? ("green" as FlagStatus) : getDateFlagStatus(doc.expiry_date) };
+    });
+  }, [documents]);
 
   const vehicles = useMemo(() => {
     const map = new Map<string, string>();
@@ -81,7 +88,8 @@ export default function DocumentsPage() {
 
   const visible = withStatus
     .filter((d) => vehicleFilter === "all" || d.doc.vehicle_id === vehicleFilter)
-    .sort((a, b) => a.doc.expiry_date.localeCompare(b.doc.expiry_date));
+    // Newest saved first, so a renewal sits above the record it replaced.
+    .sort((a, b) => b.doc.created_at.localeCompare(a.doc.created_at));
 
   const totalCostThisYear = (documents ?? [])
     // issue_date is optional — fall back to created_at like aggregateMonthlyExpenses does,
@@ -163,7 +171,7 @@ export default function DocumentsPage() {
 
         {documents && documents.length > 0 ? (
           <div className="flex flex-col gap-2.25">
-            {visible.map(({ doc, status }) => {
+            {visible.map(({ doc, status, superseded }) => {
               const Icon = DOCUMENT_TYPE_ICON[doc.document_type];
               return (
                 <Link
@@ -175,18 +183,26 @@ export default function DocumentsPage() {
                     status === "red" && "border-[1.5px] border-flag-overdue bg-flag-overdue-soft",
                   )}
                 >
-                  <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-icon", ICON_BG[status])}>
+                  <div
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-icon",
+                      superseded ? "bg-line text-ink-muted" : ICON_BG[status],
+                    )}
+                  >
                     <Icon className="size-4.5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-extrabold text-ink">
-                      {DOCUMENT_TYPE_LABEL[doc.document_type]}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className={cn("truncate text-[15px] font-extrabold", superseded ? "text-ink-3" : "text-ink")}>
+                        {DOCUMENT_TYPE_LABEL[doc.document_type]}
+                      </p>
+                      {superseded && <HistoryTag />}
+                    </div>
                     <p className="truncate text-xs text-ink-3">
                       {doc.vehicles?.name ?? "รถ"}
                       {doc.policy_number ? ` · ${doc.policy_number}` : ""}
                     </p>
-                    <p className={cn("truncate font-mono text-xs", DUE_TEXT_COLOR[status])}>
+                    <p className={cn("truncate font-mono text-xs", superseded ? "text-ink-muted" : DUE_TEXT_COLOR[status])}>
                       {formatDate(doc.expiry_date)}
                       {status !== "green" && ` · ${formatDueLabel(status, doc.expiry_date)}`}
                     </p>
@@ -281,12 +297,12 @@ export default function DocumentsPage() {
                     </Chip>
                   ))}
                 </div>
-                <span className="shrink-0 text-[13px] font-bold text-ink-3">เรียงตาม: วันหมดอายุ</span>
+                <span className="shrink-0 text-[13px] font-bold text-ink-3">เรียงตาม: ล่าสุด</span>
               </div>
 
               {visible.length > 0 ? (
                 <div className="flex flex-col gap-2">
-                  {visible.map(({ doc, status }) => {
+                  {visible.map(({ doc, status, superseded }) => {
                     const Icon = DOCUMENT_TYPE_ICON[doc.document_type];
                     return (
                       <Link key={doc.id} href={`/vehicles/${doc.vehicle_id}/documents/${doc.id}/edit`}>
@@ -300,14 +316,22 @@ export default function DocumentsPage() {
                           }
                         >
                           <DataCell width={34}>
-                            <div className={cn("flex size-8.5 items-center justify-center rounded-icon", ICON_BG[status])}>
+                            <div
+                              className={cn(
+                                "flex size-8.5 items-center justify-center rounded-icon",
+                                superseded ? "bg-line text-ink-muted" : ICON_BG[status],
+                              )}
+                            >
                               <Icon className="size-4" />
                             </div>
                           </DataCell>
                           <DataCell flex>
-                            <p className="truncate text-base font-extrabold text-ink">
-                              {DOCUMENT_TYPE_LABEL[doc.document_type]}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className={cn("truncate text-base font-extrabold", superseded ? "text-ink-3" : "text-ink")}>
+                                {DOCUMENT_TYPE_LABEL[doc.document_type]}
+                              </p>
+                              {superseded && <HistoryTag />}
+                            </div>
                             {doc.policy_number && (
                               <p className="truncate font-mono text-xs text-ink-3">{doc.policy_number}</p>
                             )}
@@ -316,7 +340,7 @@ export default function DocumentsPage() {
                             <p className="truncate text-sm font-bold text-ink-3">{doc.vehicles?.name ?? "รถ"}</p>
                           </DataCell>
                           <DataCell width={170}>
-                            <p className={cn("truncate font-mono text-sm", DUE_TEXT_COLOR[status])}>
+                            <p className={cn("truncate font-mono text-sm", superseded ? "text-ink-muted" : DUE_TEXT_COLOR[status])}>
                               {formatDate(doc.expiry_date)}
                             </p>
                             {status !== "green" && (

@@ -2,14 +2,18 @@ import * as React from "react";
 import { cn } from "cn";
 import { FLAG_LABEL, type FlagStatus } from "@/lib/flag-status";
 
-const DOT_COLOR: Record<FlagStatus, string> = {
+/** "history" = an older record replaced by a newer one of the same type: grey, not a flag. */
+type DotStatus = FlagStatus | "history";
+
+const DOT_COLOR: Record<DotStatus, string> = {
+  history: "bg-ink-faint",
   red: "bg-flag-overdue",
   yellow: "bg-flag-due-soon",
   green: "bg-flag-ok",
 };
 
 /** Small filled status dot — e.g. the corner dot on a vehicle thumbnail. */
-function StatusDot({ status, className }: { status: FlagStatus; className?: string }) {
+function StatusDot({ status, className }: { status: DotStatus; className?: string }) {
   return (
     <span
       data-slot="rd-status-dot"
@@ -56,5 +60,19 @@ function StatusBadge({ status, tone = "soft", children, className }: StatusBadge
   );
 }
 
-export { StatusDot, StatusBadge };
+/** Small grey tag marking an older, replaced record. */
+function HistoryTag({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-full bg-line px-2 py-0.5 text-[11px] font-bold whitespace-nowrap text-ink-muted",
+        className,
+      )}
+    >
+      ประวัติ
+    </span>
+  );
+}
+
+export { StatusDot, StatusBadge, HistoryTag };
 export type { StatusBadgeProps };

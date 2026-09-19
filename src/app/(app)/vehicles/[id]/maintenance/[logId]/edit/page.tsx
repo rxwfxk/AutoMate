@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { buttonVariants } from "@/components/redesign/button";
 import { PageHeader, Breadcrumb } from "@/components/redesign/page-header";
+import { DeleteMaintenanceLogDialog } from "@/components/maintenance/delete-maintenance-log-dialog";
 import { MaintenanceLogForm } from "@/components/maintenance/maintenance-log-form";
 import type { MaintenanceLog, MaintenanceType, Vehicle } from "@/types/database.types";
 
@@ -96,6 +97,17 @@ export default function EditMaintenanceLogPage({
         <PageHeader
           eyebrow={<Breadcrumb items={["รถของฉัน", vehicle?.name ?? "…", "แก้ไขบันทึก"]} />}
           title="แก้ไขบันทึกซ่อมบำรุง"
+          actions={
+            log ? (
+              <DeleteMaintenanceLogDialog
+                logId={log.id}
+                vehicleId={id}
+                typeName={maintenanceTypes?.find((t) => t.id === log.maintenance_type_id)?.name ?? "รายการนี้"}
+                triggerClassName="flex size-12.5 items-center justify-center rounded-[16px] border-[1.5px] border-line-strong text-ink"
+                onDeleted={() => router.push(`/vehicles/${id}`)}
+              />
+            ) : undefined
+          }
         />
 
         {error && (

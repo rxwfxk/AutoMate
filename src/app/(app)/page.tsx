@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/redesign/page-header";
 import { StatusDot, StatusBadge } from "@/components/redesign/status";
 import { PlaceholderImage } from "@/components/redesign/placeholder-image";
 import { getMaintenanceIcon } from "@/lib/maintenance-icons";
+import { currentDocuments, currentLogs } from "@/lib/current-items";
 import { getDateFlagStatus, getMaintenanceFlagStatus, worseFlag, type FlagStatus } from "@/lib/flag-status";
 import {
   aggregateMonthlyExpenses,
@@ -139,7 +140,7 @@ export default function Home() {
   // stat tile's red/yellow breakdown (countActionableItems only gives the
   // combined non-green count).
   const itemStatuses = [
-    ...logs.map((log) =>
+    ...currentLogs(logs).map((log) =>
       getMaintenanceFlagStatus({
         nextDueDate: log.next_due_date,
         nextDueMileage: log.next_due_mileage,
@@ -147,7 +148,7 @@ export default function Home() {
         intervalKm: log.maintenance_types?.default_interval_km,
       }),
     ),
-    ...documents.map((doc) => getDateFlagStatus(doc.expiry_date)),
+    ...currentDocuments(documents).map((doc) => getDateFlagStatus(doc.expiry_date)),
   ];
   const redCount = itemStatuses.filter((s) => s === "red").length;
   const yellowCount = itemStatuses.filter((s) => s === "yellow").length;

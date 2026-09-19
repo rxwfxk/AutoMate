@@ -4,7 +4,7 @@ import { cn } from "cn";
 
 import { getMaintenanceFlagStatus, type FlagStatus } from "@/lib/flag-status";
 import { Card } from "@/components/redesign/card";
-import { StatusDot } from "@/components/redesign/status";
+import { HistoryTag, StatusDot } from "@/components/redesign/status";
 import { DeleteMaintenanceLogDialog } from "@/components/maintenance/delete-maintenance-log-dialog";
 import type { Document, MaintenanceLog, MaintenanceType, Vehicle } from "@/types/database.types";
 
@@ -23,6 +23,7 @@ export function MaintenanceLogItem({
   vehicleId,
   currentMileage,
   vehicleDetail,
+  superseded = false,
   onDeleted,
 }: {
   log: MaintenanceLogWithType;
@@ -30,15 +31,19 @@ export function MaintenanceLogItem({
   currentMileage: number;
   /** The page's already-loaded vehicle payload, so the delete dialog needn't refetch it. */
   vehicleDetail?: { vehicle: Vehicle; logs: MaintenanceLogWithType[]; documents: Document[] };
+  /** A newer record of the same type exists — this one is history and raises no flag. */
+  superseded?: boolean;
   onDeleted?: (logId: string) => void;
 }) {
   const type = log.maintenance_types;
-  const status = getMaintenanceFlagStatus({
-    nextDueDate: log.next_due_date,
-    nextDueMileage: log.next_due_mileage,
-    currentMileage,
-    intervalKm: type?.default_interval_km,
-  });
+  const status: FlagStatus = superseded
+    ? "green"
+    : getMaintenanceFlagStatus({
+        nextDueDate: log.next_due_date,
+        nextDueMileage: log.next_due_mileage,
+        currentMileage,
+        intervalKm: type?.default_interval_km,
+      });
 
   return (
     <Card
@@ -48,10 +53,15 @@ export function MaintenanceLogItem({
         status === "red" && "border-[1.5px] border-flag-overdue bg-flag-overdue-soft",
       )}
     >
-      <StatusDot status={status} className="mt-1.5 shrink-0" />
+      <StatusDot status={superseded ? "history" : status} className="mt-1.5 shrink-0" />
 
       <div className="min-w-0 flex-1">
-        <h3 className="text-base font-extrabold text-ink">{type?.name ?? "ไม่ระบุประเภท"}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className={cn("text-base font-extrabold", superseded ? "text-ink-3" : "text-ink")}>
+            {type?.name ?? "ไม่ระบุประเภท"}
+          </h3>
+          {superseded && <HistoryTag />}
+        </div>
 
         <p className="mt-0.5 text-[13px] text-ink-3">
           ครั้งล่าสุด{" "}
@@ -66,7 +76,7 @@ export function MaintenanceLogItem({
         </p>
 
         {(log.next_due_date || log.next_due_mileage) && (
-          <p className={cn("mt-0.5 font-mono text-[13px]", DUE_TEXT_COLOR[status])}>
+          <p className={cn("mt-0.5 font-mono text-[13px]", superseded ? "text-ink-muted" : DUE_TEXT_COLOR[status])}>
             ครบกำหนด{" "}
             {log.next_due_mileage ? `${log.next_due_mileage.toLocaleString("th-TH")} กม.` : ""}
             {log.next_due_mileage && log.next_due_date ? " / " : ""}

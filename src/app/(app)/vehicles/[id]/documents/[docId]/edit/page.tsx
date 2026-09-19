@@ -7,6 +7,8 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { buttonVariants } from "@/components/redesign/button";
 import { PageHeader, Breadcrumb } from "@/components/redesign/page-header";
+import { DeleteDocumentDialog } from "@/components/documents/delete-document-dialog";
+import { DOCUMENT_TYPE_LABEL } from "@/lib/document-types";
 import { VehicleDocumentForm } from "@/components/documents/vehicle-document-form";
 import type { Document, Vehicle } from "@/types/database.types";
 
@@ -44,16 +46,28 @@ export default function EditVehicleDocumentPage({
   return (
     <div className="flex w-full flex-1 flex-col items-center bg-base p-5 lg:p-8">
       <div className="flex w-full max-w-xl flex-col gap-4 lg:hidden">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            aria-label="ย้อนกลับ"
-            className="flex size-9.5 shrink-0 items-center justify-center rounded-icon border-[1.5px] border-line-strong text-ink"
-          >
-            <ArrowLeft className="size-4.5" />
-          </button>
-          <h1 className="text-lg font-extrabold text-ink">แก้ไขเอกสาร</h1>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              aria-label="ย้อนกลับ"
+              className="flex size-9.5 shrink-0 items-center justify-center rounded-icon border-[1.5px] border-line-strong text-ink"
+            >
+              <ArrowLeft className="size-4.5" />
+            </button>
+            <h1 className="text-lg font-extrabold text-ink">แก้ไขเอกสาร</h1>
+          </div>
+          {doc && (
+            <DeleteDocumentDialog
+              docId={doc.id}
+              label={DOCUMENT_TYPE_LABEL[doc.document_type]}
+              deleteUrl={`/api/vehicles/${id}/documents/${doc.id}`}
+              cost={doc.cost}
+              hasFile={!!doc.file_url}
+              onDeleted={() => router.push(`/vehicles/${id}`)}
+            />
+          )}
         </div>
 
         {error && (
@@ -80,6 +94,19 @@ export default function EditVehicleDocumentPage({
         <PageHeader
           eyebrow={<Breadcrumb items={["รถของฉัน", vehicle?.name ?? "…", "แก้ไขเอกสาร"]} />}
           title="แก้ไขเอกสาร"
+          actions={
+            doc ? (
+              <DeleteDocumentDialog
+                docId={doc.id}
+                label={DOCUMENT_TYPE_LABEL[doc.document_type]}
+                deleteUrl={`/api/vehicles/${id}/documents/${doc.id}`}
+                cost={doc.cost}
+                hasFile={!!doc.file_url}
+                triggerClassName="flex size-12.5 items-center justify-center rounded-[16px] border-[1.5px] border-line-strong text-ink"
+                onDeleted={() => router.push(`/vehicles/${id}`)}
+              />
+            ) : undefined
+          }
         />
 
         {error && (

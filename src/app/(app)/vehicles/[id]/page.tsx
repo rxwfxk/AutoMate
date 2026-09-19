@@ -1,13 +1,27 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bike, FileText, Loader2, Pencil, Plus, Wrench } from "lucide-react";
+import { ArrowLeft, ChevronDown, FileText, Loader2, Pencil, Plus, Wrench } from "lucide-react";
+import { cn } from "cn";
 
 import { apiFetch } from "@/lib/api-client";
-import { buttonVariants } from "@/components/ui/button";
+import {
+  getDateFlagStatus,
+  getMaintenanceFlagStatus,
+  worseFlag,
+  type FlagStatus,
+} from "@/lib/flag-status";
+import { getMostUrgentItem } from "@/lib/dashboard-data";
+import { DOCUMENT_TYPE_LABEL } from "@/lib/document-types";
+import { Card } from "@/components/redesign/card";
+import { Button, buttonVariants } from "@/components/redesign/button";
+import { StatusDot, StatusBadge } from "@/components/redesign/status";
+import { PlaceholderImage } from "@/components/redesign/placeholder-image";
+import { PageHeader, Breadcrumb } from "@/components/redesign/page-header";
+import { Chip } from "@/components/redesign/chip";
+import { DataRow, DataCell } from "@/components/redesign/data-row";
 import { DeleteVehicleDialog } from "@/components/vehicles/delete-vehicle-dialog";
 import {
   MaintenanceLogItem,
@@ -22,11 +36,34 @@ type VehicleDetailResponse = {
   documents: Document[];
 };
 
+type Tab = "maintenance" | "documents";
+
+const DUE_TEXT_COLOR: Record<FlagStatus, string> = {
+  red: "text-flag-overdue",
+  yellow: "text-flag-due-soon",
+  green: "text-ink-3",
+};
+
+const STATUS_RANK: Record<FlagStatus, number> = { red: 0, yellow: 1, green: 2 };
+
+// The nested maintenance_types join on this endpoint only selects
+// default_interval_km (see /api/vehicles/[id]), not _months — so the
+// standard-interval hint here can only ever show the km side.
+function formatStandardInterval(type: { default_interval_km: number | null } | null | undefined) {
+  if (!type?.default_interval_km) return null;
+  return `ทุก ${type.default_interval_km.toLocaleString("th-TH")} กม.`;
+}
+
 export default function VehicleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [result, setResult] = useState<VehicleDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("maintenance");
+  const [showAllLogs, setShowAllLogs] = useState(false);
+  const [mileageInput, setMileageInput] = useState("");
+  const [mileageSaving, setMileageSaving] = useState(false);
+  const [mileageError, setMileageError] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<VehicleDetailResponse>(`/api/vehicles/${id}`).then((res) => {
@@ -35,11 +72,15 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
     });
   }, [id]);
 
+  useEffect(() => {
+    if (result) setMileageInput(String(result.vehicle.current_mileage));
+  }, [result?.vehicle.current_mileage]);
+
   if (error) {
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-3 p-4 text-center sm:p-6">
-        <p className="text-muted-foreground">{error}</p>
-        <Link href="/vehicles" className={buttonVariants()}>
+      <div className="flex w-full flex-1 flex-col items-center justify-center gap-3 bg-base p-4 text-center sm:p-6">
+        <p className="text-ink-muted">{error}</p>
+        <Link href="/vehicles" className={buttonVariants({ variant: "dark" })}>
           กลับไปหน้ารถของฉัน
         </Link>
       </div>
@@ -48,8 +89,8 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
 
   if (!result) {
     return (
-      <div className="flex flex-1 items-center justify-center py-16">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      <div className="flex flex-1 items-center justify-center bg-base py-16">
+        <Loader2 className="size-6 animate-spin text-ink-muted" />
       </div>
     );
   }
@@ -66,130 +107,552 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
     );
   }
 
+  async function handleMileageSave() {
+    const value = Number(mileageInput);
+    // Number("") is 0, which would pass the checks below and silently zero the odometer.
+    if (mileageInput.trim() === "" || !Number.isFinite(value) || value < 0) {
+      setMileageError("เลขไมล์ไม่ถูกต้อง");
+      return;
+    }
+    setMileageSaving(true);
+    setMileageError(null);
+    const res = await apiFetch(`/api/vehicles/${vehicle.id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        image_url: vehicle.image_url,
+        name: vehicle.name,
+        brand: vehicle.brand,
+        model: vehicle.model,
+        year: vehicle.year,
+        license_plate: vehicle.license_plate,
+        current_mileage: value,
+      }),
+    });
+    setMileageSaving(false);
+    if (res.error) {
+      setMileageError(res.error);
+      return;
+    }
+    setResult((prev) => (prev ? { ...prev, vehicle: { ...prev.vehicle, current_mileage: value } } : prev));
+  }
+
+  const logStatuses = logs.map((log) =>
+    getMaintenanceFlagStatus({
+      nextDueDate: log.next_due_date,
+      nextDueMileage: log.next_due_mileage,
+      currentMileage: vehicle.current_mileage,
+      intervalKm: log.maintenance_types?.default_interval_km,
+    }),
+  );
+  const documentStatuses = documents.map((document) => getDateFlagStatus(document.expiry_date));
+  const allStatuses = [...logStatuses, ...documentStatuses];
+  const worst = allStatuses.reduce<FlagStatus>((acc, status) => worseFlag(acc, status), "green");
+  const attentionCount = allStatuses.filter((status) => status !== "green").length;
+
+  // Desktop table sorts by urgency (worst first) — mobile keeps the API's
+  // own service_date-desc order untouched.
+  const sortedLogs = logs
+    .map((log, i) => ({ log, status: logStatuses[i] }))
+    .sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]);
+  const totalCost =
+    logs.reduce((sum, l) => sum + (l.cost ?? 0), 0) + documents.reduce((sum, d) => sum + (d.cost ?? 0), 0);
+  const urgentItem = getMostUrgentItem(
+    logs,
+    documents,
+    new Map([[vehicle.id, vehicle.current_mileage]]),
+    new Map([[vehicle.id, vehicle.name]]),
+  );
+
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-4 sm:p-6">
-      <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6 shadow-sm sm:flex-row">
-        <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg bg-muted sm:w-48">
-          {vehicle.image_url ? (
-            <Image
-              src={vehicle.image_url}
-              alt={vehicle.name}
-              fill
-              sizes="192px"
-              className="object-cover"
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center">
-              <Bike className="size-10 text-muted-foreground" />
-            </div>
-          )}
+    <div className="flex w-full flex-1 flex-col items-center bg-base p-5 lg:p-8">
+      {/* Mobile/tablet layout — README Screen 2. Untouched below this line
+          except the lg:hidden that hands off to the desktop block (3b). */}
+      <div className="flex w-full max-w-3xl flex-col gap-4 lg:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              aria-label="ย้อนกลับ"
+              className="flex size-9.5 shrink-0 items-center justify-center rounded-icon border-[1.5px] border-line-strong text-ink"
+            >
+              <ArrowLeft className="size-4.5" />
+            </button>
+            <h1 className="truncate text-lg font-extrabold text-ink">{vehicle.name}</h1>
+          </div>
+          <DeleteVehicleDialog
+            vehicleId={vehicle.id}
+            vehicleName={vehicle.name}
+            detail={result}
+            onDeleted={() => router.push("/vehicles")}
+          />
         </div>
 
-        <div className="flex flex-1 flex-col gap-1">
-          <div className="flex items-start justify-between gap-2">
-            <h1 className="font-heading text-xl font-semibold tracking-tight">{vehicle.name}</h1>
-            <div className="flex shrink-0 items-center gap-1">
-              <Link
-                href={`/vehicles/${vehicle.id}/edit`}
-                className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
-                aria-label={`แก้ไข ${vehicle.name}`}
-              >
-                <Pencil />
-              </Link>
+        <Card tone="dark" className="flex flex-col gap-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm font-semibold text-ink-faint">
+              {vehicle.brand} {vehicle.model}
+              {vehicle.year ? ` · ${vehicle.year}` : ""}
+              {vehicle.license_plate ? (
+                <span className="ml-2 font-mono text-[15px] text-surface">{vehicle.license_plate}</span>
+              ) : null}
+            </p>
+            <StatusBadge status={worst} tone="solid" className="shrink-0">
+              {worst === "green" ? "ปกติ" : `ต้องทำ ${attentionCount}`}
+            </StatusBadge>
+          </div>
+
+          <PlaceholderImage
+            src={vehicle.image_url}
+            alt={vehicle.name}
+            tone="dark"
+            className="h-19 w-full rounded-list"
+            sizes="(min-width: 640px) 512px, 100vw"
+          />
+
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-ink-faint">เลขไมล์ปัจจุบัน</p>
+              <p className="font-mono text-[26px] leading-none text-surface">
+                {vehicle.current_mileage.toLocaleString("th-TH")}{" "}
+                <span className="text-sm font-normal text-ink-faint">กม.</span>
+              </p>
+            </div>
+            <Link
+              href={`/vehicles/${vehicle.id}/edit`}
+              className="flex shrink-0 items-center gap-1 rounded-icon border-[1.5px] border-ink-line px-3.5 py-2.5 text-sm font-bold text-surface"
+            >
+              <Pencil className="size-3.5" />
+              แก้ไขรถ
+            </Link>
+          </div>
+        </Card>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setTab("maintenance")}
+            className={cn(
+              "rounded-full px-4 py-2.25 text-sm font-bold",
+              tab === "maintenance" ? "bg-ink font-extrabold text-surface" : "border border-line-strong text-ink-3",
+            )}
+          >
+            ซ่อมบำรุง
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("documents")}
+            className={cn(
+              "rounded-full px-4 py-2.25 text-sm font-bold",
+              tab === "documents" ? "bg-ink font-extrabold text-surface" : "border border-line-strong text-ink-3",
+            )}
+          >
+            เอกสาร {documents.length}
+          </button>
+        </div>
+
+        {tab === "maintenance" ? (
+          logs.length > 0 ? (
+            <div className="flex flex-col gap-2.25">
+              {logs.map((log) => (
+                <MaintenanceLogItem
+                  key={log.id}
+                  log={log}
+                  vehicleId={vehicle.id}
+                  currentMileage={vehicle.current_mileage}
+                  vehicleDetail={result}
+                  onDeleted={handleLogDeleted}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-list border border-dashed border-line-dash py-16 text-center">
+              <Wrench className="size-10 text-ink-faint" />
+              <p className="text-ink-muted">ยังไม่มีประวัติการซ่อมบำรุง</p>
+            </div>
+          )
+        ) : documents.length > 0 ? (
+          <div className="flex flex-col gap-2.25">
+            {documents.map((document) => (
+              <DocumentItem
+                key={document.id}
+                document={document}
+                editHref={`/vehicles/${vehicle.id}/documents/${document.id}/edit`}
+                deleteUrl={`/api/vehicles/${vehicle.id}/documents/${document.id}`}
+                onDeleted={handleDocumentDeleted}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-3 rounded-list border border-dashed border-line-dash py-16 text-center">
+            <FileText className="size-10 text-ink-faint" />
+            <p className="text-ink-muted">ยังไม่มีเอกสาร (พ.ร.บ., ประกัน, ภาษี)</p>
+          </div>
+        )}
+
+        {tab === "maintenance" ? (
+          <Button
+            type="button"
+            className="w-full"
+            onClick={() => router.push(`/vehicles/${vehicle.id}/maintenance/new`)}
+          >
+            <Plus className="size-5" />
+            เพิ่มบันทึกซ่อมบำรุง
+          </Button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => router.push(`/vehicles/${vehicle.id}/documents/new`)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-card border-[1.5px] border-dashed border-line-dash p-4 text-[15px] font-extrabold text-ink-3"
+          >
+            <Plus className="size-4" />
+            เพิ่มเอกสารของรถคันนี้
+          </button>
+        )}
+      </div>
+
+      {/* Desktop layout — README Screen 3b. */}
+      <div className="hidden w-full flex-col gap-5 lg:flex">
+        <PageHeader
+          eyebrow={<Breadcrumb items={["รถของฉัน", vehicle.name]} />}
+          title={vehicle.name}
+          actions={
+            <>
               <DeleteVehicleDialog
                 vehicleId={vehicle.id}
                 vehicleName={vehicle.name}
+                detail={result}
+                triggerClassName="flex size-12.5 items-center justify-center rounded-[16px] border-[1.5px] border-line-strong text-ink"
                 onDeleted={() => router.push("/vehicles")}
               />
+              <Link
+                href={`/vehicles/${vehicle.id}/edit`}
+                className="flex items-center rounded-[16px] border-[1.5px] border-line-strong px-4.5 py-3.25 text-[15px] font-extrabold text-ink"
+              >
+                แก้ไขข้อมูลรถ
+              </Link>
+              <Link
+                href={`/vehicles/${vehicle.id}/maintenance/new`}
+                className="flex items-center rounded-[16px] bg-cta px-5 py-3.25 text-[15px] font-extrabold text-surface"
+              >
+                + เพิ่มบันทึก
+              </Link>
+            </>
+          }
+        />
+
+        <div className="grid grid-cols-[1.5fr_1fr] gap-5">
+          {/* Left column */}
+          <div className="flex min-w-0 flex-col gap-5">
+            <Card tone="dark" className="flex flex-row gap-5.5">
+              <PlaceholderImage
+                src={vehicle.image_url}
+                alt={vehicle.name}
+                tone="dark"
+                className="h-33 w-57.5 shrink-0 rounded-list"
+                sizes="230px"
+              />
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 truncate text-[15px] font-semibold text-ink-faint">
+                    {vehicle.brand} {vehicle.model}
+                    {vehicle.year ? ` · ${vehicle.year}` : ""}
+                    {vehicle.license_plate ? (
+                      <span className="ml-2 font-mono text-base text-surface">{vehicle.license_plate}</span>
+                    ) : null}
+                  </p>
+                  <StatusBadge status={worst} tone="solid" className="shrink-0">
+                    {worst === "green" ? "ปกติ" : `ต้องทำ ${attentionCount} รายการ`}
+                  </StatusBadge>
+                </div>
+                <div className="mt-auto flex gap-6.5">
+                  <div>
+                    <p className="text-xs font-bold text-ink-faint">เลขไมล์</p>
+                    <p className="font-mono text-[28px] leading-none whitespace-nowrap text-surface">
+                      {vehicle.current_mileage.toLocaleString("th-TH")}{" "}
+                      <span className="text-sm text-ink-faint">กม.</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-ink-faint">ค่าใช้จ่ายรวม</p>
+                    <p className="font-mono text-[28px] leading-none whitespace-nowrap text-surface">
+                      <span className="font-sans text-sm">฿ </span>
+                      {totalCost.toLocaleString("th-TH")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-ink-faint">ประวัติทั้งหมด</p>
+                    <p className="font-mono text-[28px] leading-none whitespace-nowrap text-surface">
+                      {logs.length} <span className="text-sm text-ink-faint">ครั้ง</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <div className="flex flex-col gap-4 rounded-card bg-surface-card p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex gap-2">
+                  <Chip selected={tab === "maintenance"} onClick={() => setTab("maintenance")}>
+                    ซ่อมบำรุง {logs.length}
+                  </Chip>
+                  <Chip selected={tab === "documents"} onClick={() => setTab("documents")}>
+                    เอกสาร {documents.length}
+                  </Chip>
+                </div>
+                <span className="flex items-center gap-1 rounded-xl border border-line px-3.25 py-2 text-[13px] font-bold text-ink-3">
+                  เรียงตาม: ความเร่งด่วน
+                  <ChevronDown className="size-3.5" />
+                </span>
+              </div>
+
+              {tab === "maintenance" ? (
+                sortedLogs.length > 0 ? (
+                  <>
+                    <div className="flex flex-col gap-2">
+                      {(showAllLogs ? sortedLogs : sortedLogs.slice(0, 3)).map(({ log, status }) => {
+                        const interval = formatStandardInterval(log.maintenance_types);
+                        return (
+                          <Link key={log.id} href={`/vehicles/${vehicle.id}/maintenance/${log.id}/edit`}>
+                            <DataRow
+                              className={
+                                status === "red" ? "border-[1.5px] border-flag-overdue bg-flag-overdue-soft" : undefined
+                              }
+                            >
+                              <DataCell width={14}>
+                                <StatusDot status={status} />
+                              </DataCell>
+                              <DataCell flex>
+                                <p className="truncate text-base font-extrabold text-ink">
+                                  {log.maintenance_types?.name ?? "ไม่ระบุประเภท"}
+                                </p>
+                                {interval && (
+                                  <p className="truncate text-xs font-semibold text-ink-muted">{interval}</p>
+                                )}
+                              </DataCell>
+                              <DataCell width={160}>
+                                <p className="truncate font-mono text-sm text-ink">
+                                  {new Date(log.service_date).toLocaleDateString("th-TH", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })}{" "}
+                                  · {log.mileage_at_service.toLocaleString("th-TH")} กม.
+                                </p>
+                                {log.shop_name && (
+                                  <p className="truncate text-xs text-ink-3">{log.shop_name}</p>
+                                )}
+                              </DataCell>
+                              <DataCell width={155}>
+                                {(log.next_due_date || log.next_due_mileage) && (
+                                  <>
+                                    <p className={cn("truncate font-mono text-sm", DUE_TEXT_COLOR[status])}>
+                                      {log.next_due_mileage
+                                        ? `${log.next_due_mileage.toLocaleString("th-TH")} กม.`
+                                        : ""}
+                                      {log.next_due_mileage && log.next_due_date ? " / " : ""}
+                                      {log.next_due_date
+                                        ? new Date(log.next_due_date).toLocaleDateString("th-TH", {
+                                            year: "numeric",
+                                            month: "short",
+                                            day: "numeric",
+                                          })
+                                        : ""}
+                                    </p>
+                                    <p className={cn("text-xs font-bold", DUE_TEXT_COLOR[status])}>
+                                      {status === "red" ? "เลยกำหนดแล้ว" : status === "yellow" ? "ใกล้ครบกำหนด" : "ยังไม่ถึงกำหนด"}
+                                    </p>
+                                  </>
+                                )}
+                              </DataCell>
+                              <DataCell width={88} className="text-right">
+                                {log.cost !== null && (
+                                  <p className="font-mono text-sm whitespace-nowrap text-ink-3">
+                                    <span className="font-sans">฿ </span>
+                                    {log.cost.toLocaleString("th-TH")}
+                                  </p>
+                                )}
+                              </DataCell>
+                            </DataRow>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                    {!showAllLogs && sortedLogs.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllLogs(true)}
+                        className="text-center text-sm font-extrabold text-cta"
+                      >
+                        ดูประวัติทั้งหมด {sortedLogs.length} รายการ
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <p className="py-8 text-center text-ink-muted">ยังไม่มีประวัติการซ่อมบำรุง</p>
+                )
+              ) : documents.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {documents.map((document) => {
+                    const status = getDateFlagStatus(document.expiry_date);
+                    return (
+                      <Link
+                        key={document.id}
+                        href={`/vehicles/${vehicle.id}/documents/${document.id}/edit`}
+                      >
+                        <DataRow
+                          className={
+                            status === "yellow" ? "border-[1.5px] border-flag-due-soon bg-flag-due-soon-soft" : undefined
+                          }
+                        >
+                          <DataCell width={14}>
+                            <StatusDot status={status} />
+                          </DataCell>
+                          <DataCell flex>
+                            <p className="truncate text-base font-extrabold text-ink">
+                              {DOCUMENT_TYPE_LABEL[document.document_type]}
+                            </p>
+                            {document.policy_number && (
+                              <p className="truncate text-xs text-ink-3">{document.policy_number}</p>
+                            )}
+                          </DataCell>
+                          <DataCell width={155}>
+                            <p className={cn("truncate font-mono text-sm", DUE_TEXT_COLOR[status])}>
+                              หมดอายุ{" "}
+                              {new Date(document.expiry_date).toLocaleDateString("th-TH", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </p>
+                          </DataCell>
+                          <DataCell width={88} className="text-right">
+                            {document.cost !== null && (
+                              <p className="font-mono text-sm whitespace-nowrap text-ink-3">
+                                <span className="font-sans">฿ </span>
+                                {document.cost.toLocaleString("th-TH")}
+                              </p>
+                            )}
+                          </DataCell>
+                        </DataRow>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="py-8 text-center text-ink-muted">ยังไม่มีเอกสาร</p>
+              )}
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {vehicle.brand} {vehicle.model}
-            {vehicle.year ? ` · ${vehicle.year}` : ""}
-          </p>
-          {vehicle.license_plate && (
-            <p className="text-sm text-muted-foreground">ทะเบียน: {vehicle.license_plate}</p>
-          )}
-          <p className="mt-2 font-mono text-2xl font-semibold">
-            {vehicle.current_mileage.toLocaleString("th-TH")}{" "}
-            <span className="text-sm font-normal text-muted-foreground">กม.</span>
-          </p>
+
+          {/* Right column */}
+          <div className="flex min-w-0 flex-col gap-5">
+            {worst !== "green" && urgentItem && (
+              <div
+                className={cn(
+                  "flex flex-col gap-3 rounded-card p-5",
+                  worst === "red" ? "bg-flag-overdue text-surface" : "bg-flag-due-soon text-ink",
+                )}
+              >
+                <p className="font-mono text-xs tracking-[0.12em] uppercase opacity-90">ต้องทำก่อน</p>
+                <h2 className="text-[23px] leading-tight font-extrabold">{urgentItem.title}</h2>
+                <p className="text-sm opacity-95">
+                  {urgentItem.dueMileage != null &&
+                    `ครบกำหนด ${urgentItem.dueMileage.toLocaleString("th-TH")} กม.`}
+                  {urgentItem.dueMileage != null && urgentItem.dueDate ? " / " : ""}
+                  {urgentItem.dueDate &&
+                    new Date(urgentItem.dueDate).toLocaleDateString("th-TH", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                </p>
+                <Link
+                  href={urgentItem.href}
+                  className={cn(
+                    "flex items-center justify-center rounded-list p-3.5 text-sm font-extrabold",
+                    worst === "red" ? "bg-surface text-ink" : "bg-ink text-surface",
+                  )}
+                >
+                  บันทึกว่าทำแล้ว
+                </Link>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3.5 rounded-card bg-surface-card p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-extrabold text-ink">เอกสารของรถคันนี้</h2>
+                <button
+                  type="button"
+                  onClick={() => setTab("documents")}
+                  className="text-sm font-bold text-cta"
+                >
+                  จัดการ
+                </button>
+              </div>
+              {documents.length > 0 ? (
+                documents.map((document) => {
+                  const status = getDateFlagStatus(document.expiry_date);
+                  return (
+                    <div key={document.id} className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "flex size-8.5 shrink-0 items-center justify-center rounded-icon",
+                          status === "red"
+                            ? "bg-flag-overdue-soft text-flag-overdue-soft-foreground"
+                            : status === "yellow"
+                              ? "bg-flag-due-soon-soft text-flag-due-soon-soft-foreground"
+                              : "bg-flag-ok-soft text-flag-ok-soft-foreground",
+                        )}
+                      >
+                        <FileText className="size-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[15px] font-extrabold text-ink">
+                          {DOCUMENT_TYPE_LABEL[document.document_type]}
+                        </p>
+                        <p className={cn("font-mono text-xs whitespace-nowrap", DUE_TEXT_COLOR[status])}>
+                          {new Date(document.expiry_date).toLocaleDateString("th-TH", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-ink-muted">ยังไม่มีเอกสาร</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2.5 rounded-card bg-surface-card p-5">
+              <h2 className="text-lg font-extrabold text-ink">อัปเดตเลขไมล์</h2>
+              <p className="text-sm text-ink-3">ให้ธงเตือนแม่นขึ้น</p>
+              <div className="flex gap-2.5">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={mileageInput}
+                  onChange={(e) => setMileageInput(e.target.value)}
+                  className="min-w-0 flex-1 rounded-list border-[1.5px] border-ink bg-surface-card px-4 py-3 font-mono text-ink outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleMileageSave}
+                  disabled={mileageSaving}
+                  className="flex shrink-0 items-center gap-1.5 rounded-list bg-ink px-5 py-3 text-sm font-extrabold text-surface disabled:opacity-50"
+                >
+                  {mileageSaving && <Loader2 className="size-4 animate-spin" />}
+                  บันทึก
+                </button>
+              </div>
+              {mileageError && <p className="text-xs font-bold text-flag-overdue">{mileageError}</p>}
+            </div>
+          </div>
         </div>
       </div>
-
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-lg font-semibold tracking-tight">ประวัติการซ่อมบำรุง</h2>
-        <Link
-          href={`/vehicles/${vehicle.id}/maintenance/new`}
-          className={buttonVariants({ className: "gap-1.5" })}
-        >
-          <Plus />
-          เพิ่มบันทึก
-        </Link>
-      </div>
-
-      {logs.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          {logs.map((log) => (
-            <MaintenanceLogItem
-              key={log.id}
-              log={log}
-              vehicleId={vehicle.id}
-              currentMileage={vehicle.current_mileage}
-              onDeleted={handleLogDeleted}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border py-16 text-center">
-          <Wrench className="size-10 text-muted-foreground" />
-          <p className="text-muted-foreground">ยังไม่มีประวัติการซ่อมบำรุง</p>
-          <Link
-            href={`/vehicles/${vehicle.id}/maintenance/new`}
-            className={buttonVariants({ className: "gap-1.5" })}
-          >
-            <Plus />
-            เพิ่มบันทึกแรก
-          </Link>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-lg font-semibold tracking-tight">เอกสาร</h2>
-        <Link
-          href={`/vehicles/${vehicle.id}/documents/new`}
-          className={buttonVariants({ className: "gap-1.5" })}
-        >
-          <Plus />
-          เพิ่มเอกสาร
-        </Link>
-      </div>
-
-      {documents.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          {documents.map((document) => (
-            <DocumentItem
-              key={document.id}
-              document={document}
-              editHref={`/vehicles/${vehicle.id}/documents/${document.id}/edit`}
-              deleteUrl={`/api/vehicles/${vehicle.id}/documents/${document.id}`}
-              onDeleted={handleDocumentDeleted}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border py-16 text-center">
-          <FileText className="size-10 text-muted-foreground" />
-          <p className="text-muted-foreground">ยังไม่มีเอกสาร (พ.ร.บ., ประกัน, ภาษี)</p>
-          <Link
-            href={`/vehicles/${vehicle.id}/documents/new`}
-            className={buttonVariants({ className: "gap-1.5" })}
-          >
-            <Plus />
-            เพิ่มเอกสารแรก
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

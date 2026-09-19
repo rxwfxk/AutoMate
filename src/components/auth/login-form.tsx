@@ -10,9 +10,8 @@ import { Loader2 } from "lucide-react";
 import type { AuthError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField, fieldInputClassName } from "@/components/redesign/form-field";
+import { Button } from "@/components/redesign/button";
 
 function translateLoginError(error: AuthError): string {
   switch (error.code) {
@@ -56,45 +55,39 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email">อีเมล</Label>
-        <Input
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3.5" noValidate>
+      <FormField label="อีเมล" htmlFor="email" error={errors.email?.message}>
+        <input
           id="email"
           type="email"
           autoComplete="email"
           placeholder="you@example.com"
+          className={fieldInputClassName({ invalid: !!errors.email })}
           {...register("email")}
         />
-        {errors.email && (
-          <p className="text-sm text-flag-red">{errors.email.message}</p>
-        )}
-      </div>
+      </FormField>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="password">รหัสผ่าน</Label>
-        <Input
+      <FormField label="รหัสผ่าน" htmlFor="password" error={errors.password?.message}>
+        <input
           id="password"
           type="password"
           autoComplete="current-password"
           placeholder="••••••••"
+          className={fieldInputClassName({ invalid: !!errors.password })}
           {...register("password")}
         />
-        {errors.password && (
-          <p className="text-sm text-flag-red">{errors.password.message}</p>
-        )}
-      </div>
+      </FormField>
 
-      {formError && <p className="text-sm text-flag-red">{formError}</p>}
+      {formError && <p className="text-sm font-bold text-flag-overdue">{formError}</p>}
 
-      <Button type="submit" disabled={isSubmitting} className="mt-2">
+      <Button type="submit" disabled={isSubmitting} className="mt-1 w-full">
         {isSubmitting && <Loader2 className="animate-spin" />}
         เข้าสู่ระบบ
       </Button>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-center text-sm text-ink-muted">
         ยังไม่มีบัญชี?{" "}
-        <Link href="/signup" className="font-medium text-primary underline-offset-4 hover:underline">
+        <Link href="/signup" className="font-bold text-cta underline-offset-4 hover:underline">
           สมัครสมาชิก
         </Link>
       </p>

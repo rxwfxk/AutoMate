@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Upload } from "lucide-react";
+import { cn } from "cn";
 
 import {
   vehicleSchema,
@@ -16,9 +17,8 @@ import {
 import { apiFetch } from "@/lib/api-client";
 import { createClient } from "@/lib/supabase/client";
 import { uploadVehicleImage, deleteVehicleImageByUrl } from "@/lib/supabase/storage";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField, fieldInputClassName } from "@/components/redesign/form-field";
+import { Button } from "@/components/redesign/button";
 import type { Vehicle } from "@/types/database.types";
 
 export function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
@@ -143,16 +143,16 @@ export function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
   }
 
   return (
-    <form onSubmit={guardedSubmit} className="flex flex-col gap-4" noValidate>
+    <form onSubmit={guardedSubmit} className="flex flex-col gap-3.5" noValidate>
       <div className="flex flex-col items-center gap-3">
         {/* Plain <img>, not next/image — the pre-upload preview is a local
             blob: URL that image optimization can't serve. */}
-        <div className="flex size-28 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
+        <div className="flex size-28 items-center justify-center overflow-hidden rounded-full border-[1.5px] border-line-strong bg-surface">
           {previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={previewUrl} alt="" className="size-full object-cover" />
           ) : (
-            <Upload className="size-8 text-muted-foreground" />
+            <Upload className="size-8 text-ink-faint" />
           )}
         </div>
         <input
@@ -162,76 +162,91 @@ export function VehicleForm({ vehicle }: { vehicle?: Vehicle }) {
           onChange={handleImageChange}
           className="hidden"
         />
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={() => fileInputRef.current?.click()}
+          className="rounded-button border border-line-strong px-4 py-2 text-sm font-bold text-ink"
         >
           {previewUrl ? "เปลี่ยนรูป" : "เพิ่มรูปรถ"}
-        </Button>
-        {imageError && <p className="text-sm text-flag-red">{imageError}</p>}
+        </button>
+        {imageError && <p className="text-xs font-bold text-flag-overdue">{imageError}</p>}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="name">ชื่อเล่นรถ</Label>
-        <Input id="name" placeholder="เช่น เจ้าดำ" {...register("name")} />
-        {errors.name && <p className="text-sm text-flag-red">{errors.name.message}</p>}
+      <FormField label="ชื่อเล่นรถ" htmlFor="name" error={errors.name?.message}>
+        <input
+          id="name"
+          placeholder="เช่น เจ้าดำ"
+          className={fieldInputClassName({ invalid: !!errors.name })}
+          {...register("name")}
+        />
+      </FormField>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <FormField label="ยี่ห้อ" htmlFor="brand" error={errors.brand?.message}>
+          <input
+            id="brand"
+            placeholder="Honda"
+            className={fieldInputClassName({ invalid: !!errors.brand })}
+            {...register("brand")}
+          />
+        </FormField>
+        <FormField label="รุ่น" htmlFor="model" error={errors.model?.message}>
+          <input
+            id="model"
+            placeholder="Wave 110i"
+            className={fieldInputClassName({ invalid: !!errors.model })}
+            {...register("model")}
+          />
+        </FormField>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="brand">ยี่ห้อ</Label>
-          <Input id="brand" placeholder="Honda" {...register("brand")} />
-          {errors.brand && <p className="text-sm text-flag-red">{errors.brand.message}</p>}
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="model">รุ่น</Label>
-          <Input id="model" placeholder="Wave 110i" {...register("model")} />
-          {errors.model && <p className="text-sm text-flag-red">{errors.model.message}</p>}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="year">ปีรถ (ค.ศ.)</Label>
-          <Input
+      <div className="grid grid-cols-2 gap-2.5">
+        <FormField label="ปีรถ (ค.ศ.)" htmlFor="year" error={errors.year?.message}>
+          <input
             id="year"
             type="number"
             inputMode="numeric"
-            className="font-mono"
             placeholder="2024"
+            className={cn(fieldInputClassName({ invalid: !!errors.year }), "font-mono")}
             {...register("year")}
           />
-          {errors.year && <p className="text-sm text-flag-red">{errors.year.message}</p>}
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="license_plate">ทะเบียน</Label>
-          <Input id="license_plate" placeholder="1กก 1234" {...register("license_plate")} />
-        </div>
+        </FormField>
+        <FormField label="ทะเบียน" htmlFor="license_plate">
+          <input
+            id="license_plate"
+            placeholder="1กก 1234"
+            className={fieldInputClassName()}
+            {...register("license_plate")}
+          />
+        </FormField>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="current_mileage">เลขไมล์ปัจจุบัน (กม.)</Label>
-        <Input
+      <FormField label="เลขไมล์ปัจจุบัน (กม.)" htmlFor="current_mileage" error={errors.current_mileage?.message}>
+        <input
           id="current_mileage"
           type="number"
           inputMode="numeric"
-          className="font-mono"
           placeholder="0"
+          className={cn(fieldInputClassName({ invalid: !!errors.current_mileage }), "font-mono")}
           {...register("current_mileage")}
         />
-        {errors.current_mileage && (
-          <p className="text-sm text-flag-red">{errors.current_mileage.message}</p>
-        )}
+      </FormField>
+
+      {formError && <p className="text-sm font-bold text-flag-overdue">{formError}</p>}
+
+      <div className="mt-1 flex gap-2.5">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="w-15 shrink-0 rounded-button border border-line-strong text-sm font-extrabold text-ink"
+        >
+          ยกเลิก
+        </button>
+        <Button type="submit" disabled={isSubmitting} className="flex-1">
+          {isSubmitting && <Loader2 className="animate-spin" />}
+          {isEdit ? "บันทึกการแก้ไข" : "เพิ่มรถ"}
+        </Button>
       </div>
-
-      {formError && <p className="text-sm text-flag-red">{formError}</p>}
-
-      <Button type="submit" disabled={isSubmitting} className="mt-2">
-        {isSubmitting && <Loader2 className="animate-spin" />}
-        {isEdit ? "บันทึกการแก้ไข" : "เพิ่มรถ"}
-      </Button>
     </form>
   );
 }

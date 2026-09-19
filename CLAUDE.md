@@ -20,11 +20,12 @@
 | TypeScript | ^5 | strict mode ตาม create-next-app default |
 | Tailwind CSS | v4 (CSS-based `@theme`, ไม่ใช้ `tailwind.config.js`) | ธีมอยู่ใน `src/app/globals.css` |
 | shadcn/ui | style `base-nova` | ตั้งค่าผ่าน `components.json`, ใช้ Lucide เป็น icon library |
-| next-themes | latest | จัดการ dark/light toggle, default = dark |
+| next-themes | latest | **เลิกใช้จริงแล้ว 2026-09-18** — เคยจัดการ dark/light toggle ของธีม Pit Wall เดิม แต่หลังรีดีไซน์เป็น warm cream (ดูหัวข้อ "รีดีไซน์ UI/UX") ปุ่มสลับธีมถูกถอดออกทั้งหมดเพราะกดแล้วไม่มีผลกับหน้าที่รีดีไซน์แล้ว (แอปเป็นธีมเดียวโดยตั้งใจ) — `ThemeProvider` ใน `layout.tsx` ยังคงอยู่เฉยๆ (ไม่ผูก UI ใดๆ แล้ว) |
 | Supabase | `@supabase/supabase-js` + `@supabase/ssr` | Auth, DB (Postgres), Storage |
 | React Hook Form + Zod | + `@hookform/resolvers` | ฟอร์มทั้งหมด |
 | Recharts | latest | กราฟใน Dashboard |
 | date-fns | latest | คำนวณวันที่/รอบครบกำหนด |
+| gsap | ^3.15 | **เพิ่มใหม่ 2026-09-19** — ใช้เฉพาะ `src/components/auth/lamp-auth-shell.tsx` (Draggable plugin) สำหรับแอนิเมชันดึงเชือกโคมไฟหน้า login/signup ไม่ได้ใช้ที่อื่นในแอป |
 
 ### ⚠️ ข้อควรระวังเฉพาะ Next.js 16 (ต่างจาก training data เก่า)
 
@@ -36,7 +37,9 @@
 - **Parallel routes ต้องมี `default.js`** ถ้าจะใช้ parallel routes ในอนาคต
 - ก่อนเขียนโค้ด App Router ที่ไม่แน่ใจ ให้เช็ค docs ใน `node_modules/next/dist/docs/` ก่อน (ตามที่ `AGENTS.md` ระบุ)
 
-## ธีม "Pit Wall" (F1-inspired)
+## ธีม "Pit Wall" (F1-inspired) — ⚠️ ธีมเดิม แทนที่ด้วย warm cream แล้ว (ดูหัวข้อ "รีดีไซน์ UI/UX" ด้านล่าง)
+
+**สถานะปัจจุบัน (2026-09-18)**: ทุกหน้าในแอปใช้ธีมใหม่ "warm cream" แล้ว ธีม Pit Wall ด้านล่างนี้เหลือแค่ใน token CSS เดิม (ยังไม่ลบทิ้ง) ที่ใช้โดยของเก่าจุดเดียวที่ยังไม่ได้แตะ: dialog ยืนยันลบ (`AlertDialog`+`Button` เดิม) — เก็บหัวข้อนี้ไว้เพื่ออธิบายว่า token เดิมพวกนี้คืออะไรถ้าไปเจอในโค้ด ไม่ใช่ธีมที่ใช้งานจริงของแอปอีกต่อไป
 
 Dark mode คือธีมหลัก/ธรรมชาติของแอป (ไม่ใช่ light mode กลับสี) — ตั้งค่าใน `next-themes` เป็น `defaultTheme="dark"`
 
@@ -102,6 +105,7 @@ src/app/api/**                        ← Backend ล้วนๆ (Next.js Route
 | `/api/vehicles/[id]/documents/[docId]` | PUT, DELETE | แก้ไข/ลบเอกสารรถ |
 | `/api/driving-license` | GET, POST, PUT, DELETE | ใบขับขี่ — **ไม่มี id ใน URL** เพราะมีได้แค่ 1 ต่อ user (ค้นด้วย `document_type = driving_license` + RLS) |
 | `/api/maintenance-types` | GET | global lookup อ่านอย่างเดียว |
+| `/api/documents` | GET | เอกสารรถทุกคันของ user (join ชื่อรถ), `vehicle_id is not null` กันใบขับขี่หลุด — เพิ่มระหว่างงานเดสก์ท็อป (Turn 4) สำหรับหน้า `/documents` รวมทุกคัน |
 
 ### Auth: Bearer token ล้วน ไม่มี cookie fallback
 
@@ -130,6 +134,98 @@ src/app/api/**                        ← Backend ล้วนๆ (Next.js Route
 ### สถานะ
 
 ทดสอบผ่านจริงครบทุกโมดูล (API ตรง + browser จริง + smoke test รวมทั้งแอป ไม่มี console error) **แต่ยังไม่ได้ commit/push ขึ้น GitHub** ตามคำขอผู้ใช้ — รอทดสอบเองยืนยันก่อน ถ้าจะ push ต้องเช็คให้แน่ใจว่า deploy ขึ้น Vercel แล้ว environment variable ยังครบ (ไม่ต้องเพิ่มอะไรใหม่ เพราะ API routes ใช้ `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` ตัวเดิม)
+
+## รีดีไซน์ UI/UX "Warm Cream" (design_handoff_automate_redesign)
+
+**เริ่ม 2026-09-17** — ตามคำขอผู้ใช้ (นอกแผน 9-step เดิม, ทำหลัง REST API refactor เสร็จ): รีดีไซน์หน้าตาทั้งหมดของแอปจากธีม "Pit Wall" (F1-inspired, มืด, เน้นวัยรุ่นทั่วไป) เป็นธีมใหม่ **"warm cream"** (พื้นครีมอบอุ่น, ตัวอักษรกลมอ่านสบาย, การ์ดมนใหญ่, ตัวเลข monospace) ตาม design mockup ที่ผู้ใช้ทำเองใน claude.ai/design แล้วส่งออกมาเป็นไฟล์ในโฟลเดอร์ `design_handoff_automate_redesign/` (`README.md` = สเปกหลักทั้งหมด: design tokens, screens, behavior; `AutoMate - Redesign.dc.html` = mockup อ้างอิงที่เขียนด้วย HTML ล้วน ไม่ใช่โค้ดให้ copy ตรงๆ) — **ไม่เปลี่ยนโครงข้อมูล ไม่เปลี่ยน business logic เปลี่ยนเฉพาะชั้นการนำเสนอเท่านั้น**
+
+ทำทีละ step ตามลำดับที่ README แนะนำ (8 step แรก = มือถือ, ต่อมาผู้ใช้ขยาย README เพิ่มเป็น 13 step ครอบเดสก์ท็อปด้วย — ดูหัวข้อ "Turn 3/4" ด้านล่าง) ประกาศ step ก่อนเริ่มเสมอ + ขอ confirm ก่อนแก้ไฟล์เดิมทุกครั้งเหมือนกฎเดิมของโปรเจกต์ ทดสอบผ่านเบราว์เซอร์จริงทุก step ก่อนไปต่อ
+
+### Design tokens ใหม่ (`src/app/globals.css`)
+
+เพิ่มแบบ **additive ทั้งหมด ไม่ทับ token เดิมของ Pit Wall** (เหตุผล: ตอนเริ่ม Step 1 ยังไม่รู้ว่าจะรีดีไซน์ครบทุกหน้าได้เมื่อไหร่ ถ้าทับเลยจะพังหน้าที่ยังไม่ได้รีดีไซน์ทันที) — raw values เก็บใน `--rd-*` แล้ว map เข้า Tailwind theme ผ่าน `@theme inline`:
+- **สี**: `bg-base`, `surface`, `surface-card`, `ink`/`ink-2`/`ink-3`/`ink-muted`/`ink-faint`, `line`/`line-strong`/`line-dash`, `ink-line`, `ink-deep-2`/`ink-deep-3`, `cta`(+`cta-hover`/`cta-soft`/`cta-soft-line`/`cta-ink`), สถานะ `flag-overdue`/`flag-due-soon`/`flag-ok`(+`-soft`, +`-soft-foreground`, +`-on-dark`) — ตั้งชื่อ**แยก**จาก `flag-red`/`flag-yellow`/`flag-green` เดิมของ Pit Wall เพราะสีชุดเดิมปรับไว้สำหรับพื้นมืดโดยเฉพาะ (คนละ contrast requirement กับพื้นครีม), สีกราฟ (`chart-maintenance`/`chart-documents`/`chart-bar-soft`) คงค่าเดิมจาก Step 7 ของแผนเก่า
+- **ฟอนต์**: `font-nunito`/`font-ibm-plex-mono` — **ยังไม่ได้ wire ผ่าน `next/font/google` จริง** ใช้ fallback stack ธรรมดาไปก่อน (ตั้งใจ แยกสโคปออกจากงาน token ล้วนๆ)
+- **Radius/shadow**: `rounded-card`/`rounded-list`/`rounded-button`/`rounded-icon`/`rounded-sheet-top`, `shadow-card`/`shadow-sheet`/`shadow-fab`
+- **ระยะห่าง**: ไม่ต้องเพิ่ม token ใหม่เลย — สเกล 4px ที่ README ขอ ตรงกับ Tailwind v4's default fluid spacing scale อยู่แล้ว (`p-4.5` = 18px ใช้ได้ทันที)
+
+### Primitive components ใหม่ (`src/components/redesign/`)
+
+`Card` (tone `surface`/`dark`, size `main`/`list`), `StatTile`, `StatusDot`/`StatusBadge` (รียูส `FlagStatus` type จาก `@/lib/flag-status` เดิมตรงๆ — **ไม่ได้สร้าง status vocabulary ใหม่ซ้อนของเดิม**), `Button` (native `<button>` ไม่ใช่ base-ui's Button, 3 variants: `cta`/`dark`/`outline`, export `buttonVariants` ให้ใช้เป็น className บน `Link` ตามแพทเทิร์นเดิมของโปรเจกต์), `FormField`+`fieldInputClassName`, `PlaceholderImage` (โชว์รูปจริงผ่าน `next/image` ถ้ามี `src`, ไม่งั้น fallback เป็นลายทางเฉียงตาม spec)
+
+**เพิ่มระหว่างงานเดสก์ท็อป (Turn 3/4, ดูหัวข้อด้านล่าง)**: `Chip` (filter/quick-select pill), `Toggle` (48×28 switch), `PageHeader`+`Breadcrumb` (pattern ที่ใช้ซ้ำทุกหน้าเดสก์ท็อป), `DataRow`+`DataCell` (แถวตารางแบบ flex ไม่ใช้ `<table>`, `DataCell` มี `overflow-hidden` built-in กันข้อความชนกันในคอลัมน์กว้างคงที่), `ConfirmDeleteDialog` (dialog ยืนยันลบ — ดูหัวข้อ 4b ด้านล่าง)
+
+### สถานะ: รีดีไซน์ครบทุกหน้าในแอปแล้ว (2026-09-18)
+
+- **หน้า/ฟอร์มที่รีดีไซน์**: Dashboard (มือถือ+เดสก์ท็อป แยก layout กันเพราะเดสก์ท็อปมีกราฟ 12 เดือน มือถือไม่มีตาม spec), หน้ารายละเอียดรถ (เปลี่ยนจาก 2 section ซ้อนกันเป็น tabs ซ่อมบำรุง/เอกสาร), ฟอร์มเพิ่ม/แก้ไข (รถ, บันทึกซ่อมบำรุง — มีกล่อง "คำนวณรอบถัดไปแบบสด" ใหม่ที่ไม่มีในโค้ดเดิม, เอกสารรถ, ใบขับขี่), หน้ารายการรถ, หน้าโปรไฟล์ (ฟอร์มชื่อ/รูป + การ์ดใบขับขี่), login/signup, Shell เดสก์ท็อป (sidebar ใหม่)
+- **Sidebar มือถือ → Bottom nav** (2026-09-18, ตามคำขอผู้ใช้แยกจาก 8-step เดิม): มือถือเปลี่ยนจาก hamburger+drawer เป็น **bottom nav 4 แท็บ** ติดล่างจอ (แดชบอร์ด/รถของฉัน/เพิ่มบันทึก/โปรไฟล์ — `src/components/layout/mobile-bottom-nav.tsx`), แท็บ "เพิ่มบันทึก" เปิด **bottom sheet** (`src/components/layout/add-sheet.tsx`, รียูส `Sheet` เดิมแค่ restyle) แทนเปลี่ยนหน้า มี 4 ตัวเลือกที่ต้องเลือกรถก่อน (พาไปหน้า `/vehicles`) ยกเว้น "รถคันใหม่" ที่ไปตรงได้เลย (เพราะแอปนี้ไม่มี flow "เพิ่มบันทึกแบบไม่ระบุรถ") เดสก์ท็อปยัง sidebar เหมือนเดิม ไม่กระทบ — ปุ่มออกจากระบบ/สลับธีมที่เคยอยู่ใน sidebar ถูกย้ายไปไว้ที่หน้าโปรไฟล์แทน (จุดเดียวที่ยังเข้าถึงได้บนมือถือหลัง drawer หายไป)
+- **ปุ่มสลับธีม light/dark ถูกถอดออกทั้งหมด** (2026-09-18) — เพราะดีไซน์ใหม่เป็น warm cream ธีมเดียวตามตั้งใจ (README ระบุไว้ว่า "ธีมมืดยังไม่ได้กำหนดพาเลต") ปุ่มเดิมกดแล้วไม่มีผลกับหน้าที่รีดีไซน์แล้วเลยสักหน้า (ธีม `.dark`/`.light` เดิมมีผลแค่กับ dialog ยืนยันลบที่ยังไม่ได้แตะ) — ถือเป็นการแก้บั๊ก (ปุ่มค้าง ไม่ทำงานจริง) ไม่ใช่การตัดฟีเจอร์ที่ใช้งานได้ออก
+- **ลบไฟล์เก่าที่ไม่มีใครเรียกใช้แล้ว**: shadcn `input`/`label`/`select`/`avatar`/`textarea`/`flag-badge`, dashboard เก่า (`stat-tile`/`vehicle-overview-card`/`recent-activity`/`section-header`), `sign-out-button.tsx` (logic ย้ายเข้าไปเขียนตรงใน sidebar/profile แทน)
+
+### สิ่งที่**ไม่ได้แตะ**
+
+- ตั้งค่าการแจ้งเตือนที่ทำงานได้จริง (Step 8 เดิม/Email notification ยังข้ามอยู่ — การ์ดแจ้งเตือนใน 3e เป็น UI เปล่าๆ, ดูหัวข้อ Turn 3/4), Fuel Log (Phase 2)
+- Database schema, RLS policies, business logic ทุกจุด — ไม่มีการแก้ไขเลยตลอดการรีดีไซน์ (ยกเว้นเพิ่ม function ใหม่แบบ additive เช่น `getUsageSummary`, `getTopUrgentItems` — ไม่ได้แก้ของเดิม)
+
+> **Dialog ยืนยันลบ** (รถ/บันทึก/เอกสาร/ใบขับขี่) เคยอยู่ในหัวข้อนี้ (ยังใช้ `AlertDialog`+`Button` เดิม) — **ทำเสร็จแล้วในงานเดสก์ท็อป (Turn 3/4, ดูด้านล่าง)**
+
+### บั๊กที่เจอระหว่างรีดีไซน์และแก้แล้ว
+
+1. **พื้นหลังไม่เต็มจอบนเดสก์ท็อป** — หลายหน้าฟอร์ม (`vehicles/new`, `vehicles/[id]/edit`, `maintenance/new`, `maintenance/[logId]/edit`, `documents/new`, `documents/[docId]/edit`, `profile/driving-license`, `vehicles/[id]`) ใช้ pattern เดียวกันคือใส่ `bg-base` กับ `max-w-md`/`max-w-3xl` + `mx-auto` ไว้ใน div เดียวกัน ทำให้**พื้นสีครีมเองก็ถูกจำกัดความกว้างไปด้วย** ส่วนที่เหลือของจอ (นอกกล่องแคบตรงกลาง) เลยโชว์พื้นหลังธีมเก่า (มืด) โผล่มาแทน ดูเหมือนหน้าไม่เต็มจอทั้งที่จริงๆ คือบั๊ก layout — แก้โดยแยกเป็น div นอกสุด (เต็มความกว้าง มีพื้นครีม) + div ชั้นในจำกัดความกว้างเนื้อหาไว้ที่ระดับอ่านง่าย (ไม่ยืด input จนกว้างเป็นเมตร) ใช้กับทุกหน้าที่มี pattern เดียวกันรวดเดียวเพื่อความสม่ำเสมอ
+2. **ช่องว่างพื้นหลังธีมเก่าใต้เนื้อหาสั้นๆ บนมือถือ** (เจอตอนเพิ่ม bottom nav) — `min-h-full` (percentage-based height) ที่ root ของ `app-shell.tsx` มีจุดอ่อนแฝงอยู่ในโครงสร้าง flex ที่ซ้อนกันหลายชั้น (body → layout wrapper → shell root → main) ทำให้ความสูงเต็มจอไม่ไหลลงมาถึงชั้นในสุดจริงๆ เมื่อ parent เป็น `display:flex` — แฝงมานานตั้งแต่มี sidebar (นอกแผน 9-step เดิม) แต่ไม่เคยเห็นเพราะทุกหน้าก่อนหน้านี้เนื้อหายาวพอจะเต็มจอเองอยู่แล้ว เพิ่งโผล่ให้เห็นชัดตอนมี bottom nav แบบ `fixed` มาทำให้สังเกตช่องว่างได้ (หน้า dashboard ที่มีรถแค่คันเดียว) — แก้โดยเปลี่ยน root ของ `app-shell.tsx` จาก `min-h-full` เป็น **`min-h-dvh`** (หน่วยอิงหน้าจอจริง ไม่ต้องพึ่ง percentage chain ของ ancestor) จุดเดียว ยืนยันด้วยการวัด `getBoundingClientRect()` จริงทุกชั้น DOM ก่อน-หลังแก้ผ่าน Playwright ไม่ใช่แค่ดูภาพหน้าจอเฉยๆ
+3. **font rendering quirk เฉพาะ headless browser ที่ใช้ทดสอบ** (ไม่ใช่บั๊กจริง): ข้อความ "พ.ร.บ." บางครั้งเรนเดอร์เป็นตัวอักษรละตินเพี้ยนๆ ในภาพหน้าจอที่ถ่ายผ่าน Playwright — เช็ค `textContent`/codepoint ผ่าน DOM โดยตรงแล้วพบว่าข้อมูลจริงถูกต้อง 100% เป็นแค่ font-glyph rendering ของ headless Chromium ช่วงเวลาที่ capture ไม่ใช่บั๊กที่ user จริงจะเจอ (ข้อความไทยอื่นๆ ในหน้าเดียวกันเรนเดอร์ถูกหมด)
+
+### Turn 3/4 — ขยายรีดีไซน์ไปเดสก์ท็อป 1440px (2026-09-18/19)
+
+**เริ่มหลังรีดีไซน์มือถือเสร็จ** — ผู้ใช้ขยาย `README.md` เพิ่มเอง (Turn 3 = 5 หน้าเดสก์ท็อป 3a–3e, Turn 4 = เอกสารรวมทุกคัน + Dialog ยืนยันลบ + ข้อตกลงแก้สเปกบางจุดให้ตรงแอปจริง) แล้วตั้ง**กฎเข้มขึ้นกว่าเดิม**: **"ห้ามแก้ของเดิม ยกเว้นเพิ่มคลาส breakpoint (`lg:`)"** — ก่อนเขียนโค้ดทุก step ต้องไล่อ่าน component ที่มีอยู่ก่อน รายงานว่าตัวไหนใช้ซ้ำ/ตัวไหนสร้างใหม่ รอ approve ก่อนเขียนเสมอ
+
+**เทคนิคหลักที่ใช้ซ้ำทุก step**: ห่อ JSX มือถือเดิมทั้งก้อนด้วย `lg:hidden` (ไม่แก้ตัวมันเองแม้แต่บรรทัดเดียว) แล้วเพิ่ม sibling block ใหม่ `hidden ... lg:flex` แยกต่างหากสำหรับเดสก์ท็อป — ถ้า desktop ต้องการ data ที่มือถือไม่เคย fetch (เช่น ประวัติรถทุกคันสำหรับ "สรุปการใช้งาน") ให้เพิ่ม `useEffect` ใหม่แยกจากของเดิม ไม่ไปแก้ effect เดิม
+
+ทำตามลำดับ 13 ข้อที่ผู้ใช้ยืนยันไว้ ("ทำตามลำดับนี้ใช่มั้ย"):
+
+1. โทเคนสี/ฟอนต์ — ทำไปแล้วตอนรีดีไซน์มือถือ
+2. **Primitive เพิ่ม**: `Chip`, `Toggle` (ดูหัวข้อ primitives ด้านบน)
+3. **App shell**: sidebar เพิ่ม vehicle-count badge, `PageHeader`+`Breadcrumb` ใหม่ — sidebar "force-collapse 768–1023px" **ข้ามไปตามคำแนะนำ** (ทำไม่ได้จริงถ้าไม่แก้ logic เดิม + impact ต่ำ ผู้ใช้เห็นด้วย)
+4. **รายละเอียดรถ 3b** — hero การ์ดมืดแนวนอน, ตาราง `DataRow`/`DataCell` ซ่อมบำรุง/เอกสาร (chip สลับแท็บ, sort ตามความเร่งด่วน, "ดูทั้งหมด" แบบ expand ในหน้า), การ์ดงานด่วน/เอกสาร/อัปเดตเลขไมล์ทางขวา
+5. **รถของฉัน 3a** — กริดการ์ด 3 คอลัมน์ (เพิ่ม `getTopUrgentItems` ใน `dashboard-data.ts` — แยกจาก `getMostUrgentItem` เดิมเพราะ logic คล้ายแต่คืนหลายรายการ ไม่แก้ของเดิม), การ์ดเทียบค่าใช้จ่ายรายคัน
+6. **แดชบอร์ดเดสก์ท็อป sync สเปก** — เจอ**บั๊กจริง**: breakpoint สลับที่ `md:` (768px) ทั้งที่ควรเป็น `lg:` (1024px) ตามสเปก แก้เป็น `lg:` ทั่วทั้งไฟล์, ปรับ `StatTile` ตัวเลขเดสก์ท็อปเป็น 32px, เพิ่มลิงก์ "เพิ่มบันทึก" ที่ empty state ของกราฟ, เปลี่ยน header เป็น `PageHeader`
+7. **ฟอร์มเพิ่มบันทึก 3c** — `MaintenanceLogFormDesktop` (ไฟล์ใหม่แยกจากฟอร์มมือถือ ก็อปปี้ logic submit/upload มาปรับ เพราะ layout กับ logic ผูกกันในไฟล์เดิม แยกไม่ได้โดยไม่แตะ) มี chip เลือกประเภทงานเร็ว, กล่อง "บันทึกแล้วจะเกิดอะไร" คำนวณสด (คำนวณวันครบกำหนดด้วย `addMonthsClamped` ให้ตรงกับ trigger `set_maintenance_next_due` ของ Postgres เป๊ะ ไม่ใช่ naive date math), กล่อง "ครั้งล่าสุดของงานนี้"
+8. **เอกสารรวมทุกคัน `/documents`** — รวบเข้ากับข้อ 11 เดิมทำทีเดียว (เพราะ 3d ในสเปก Turn 3 คือหน้ารวมทุกคัน ต้องมี API ใหม่ก่อนถึงจะทำได้ ส่วนมือถือ "หน้า 4" per-vehicle เดิมตรงสเปกอยู่แล้วไม่ต้องแก้): เพิ่ม `GET /api/documents`, หน้า `/documents` ใหม่ (มือถือ 4a + เดสก์ท็อป 3d ในไฟล์เดียว, ไม่มีแถบใบขับขี่ตาม Turn 4, มีแถวสรุป "ค่าเอกสารรวมทั้งปี"), เพิ่มเมนู "เอกสาร" ใน sidebar (จุดเตือนสีส้มถ้ามีฉบับ 🟡/🔴) และขยาย bottom nav มือถือเป็น **5 แท็บ**
+9. **โปรไฟล์ 3e** — การ์ดบัญชี (reuse `ProfileForm` เดิม), ปุ่ม "เปลี่ยนรหัสผ่าน" ทำงานจริง (`resetPasswordForEmail`), การ์ดการแจ้งเตือน **เป็น UI เปล่าล้วนๆ ตามที่ Turn 4 สั่ง** (toggle/chip ทั้งหมด `disabled` + ป้าย "เร็วๆ นี้" ไม่มี state/backend ใดๆ ผูกเลย รอ Step แยกในอนาคตดูข้อ 13), การ์ดสรุปการใช้งาน (เพิ่ม `getUsageSummary` ใน `dashboard-data.ts` — นิยาม "ตรงเวลา" เอง เพราะ spec ไม่ได้กำหนดไว้: เทียบวันที่ทำจริงกับ due date/mileage ของบันทึกก่อนหน้าประเภทเดียวกัน), "ข้อมูลของฉัน" — CSV export **ทำงานได้จริง** (`src/lib/export-csv.ts`, ฝั่ง client ล้วนๆ ไม่ต้องมี backend ใหม่) ส่วนปุ่ม "ลบบัญชี" ทำแค่ UI `disabled` (ยังไม่มี API ลบบัญชีจริง + ยังไม่มี dialog ยืนยันตอนนั้น)
+10. **Dialog ยืนยันลบ 4b** — สร้าง `ConfirmDeleteDialog` **1 component เดียว** ปรับตัวเป็นทั้ง modal กลางจอ (เดสก์ท็อป) และ bottom sheet (มือถือ) ด้วย Tailwind breakpoint ในไฟล์เดียว (ต่างจาก step อื่นที่แยกไฟล์ เพราะไม่มีของเดิมที่ต้องรักษาไว้ — เขียนใหม่ครั้งเดียวจบ) เขียนทับ `delete-vehicle-dialog.tsx`/`delete-maintenance-log-dialog.tsx`/`delete-document-dialog.tsx` ทั้ง 3 ไฟล์ เลิกใช้ `AlertDialog` ทั้งหมด แล้ว**ลบ** `src/components/ui/alert-dialog.tsx` ทิ้ง (ไม่มีใครเรียกแล้ว) — ตัวลบรถ/ลบบันทึก**ดึงข้อมูลจริงตอนเปิด dialog** (`GET /api/vehicles/[id]`) แทนที่จะพึ่งข้อมูลที่หน้าเรียกมีอยู่แล้วหรือไม่ ทำให้ `vehicle-card.tsx` (ที่ไม่เคยมี logs/documents เลย) ก็โชว์ตัวเลขจริงได้โดยไม่ต้องแก้ prop ที่หน้าเรียกเลย และคำนวณ "ผลต่อธง" ของการลบบันทึกจริง (เทียบกับบันทึกก่อนหน้าประเภทเดียวกัน — โชว์เฉพาะมือถือตามสเปก)
+11. หน้า `/documents` รวมทุกคัน — ทำไปแล้วในข้อ 8
+12. **หน้าที่ยังไม่ได้ออกแบบ** (login, ฟอร์มรถ, ฟอร์มเอกสาร, ประวัติเต็ม, ธีมมืด) — ตรวจแล้วส่วนใหญ่ไม่ต้องทำอะไร: login/signup หน้าตาดีอยู่แล้วทั้งสอง breakpoint (auth page แบบการ์ดจัดกลางเหมาะสมอยู่แล้ว ไม่บังคับต้อง 2 คอลัมน์), ประวัติเต็ม/โปรไฟล์ ทำไปแล้วในข้อก่อนๆ, ธีมมืด/Fuel Log อยู่นอกสโคป MVP — เหลือแค่ **ฟอร์มเพิ่ม/แก้ไขรถ, เอกสารรถ, ใบขับขี่** (5 หน้า) ที่เป็นฟอร์มคอลัมน์เดียวจัดกลางแคบๆ บนจอกว้าง ให้ผู้ใช้เลือกระหว่าง (ก) ขยายกว้างขึ้น+เพิ่ม `PageHeader` เฉยๆ กับ (ข) ทำ 2 คอลัมน์แบบ step 7 (ฟอร์ม+live preview) — **เลือก (ก)** เพราะฟอร์มพวกนี้ไม่มีค่าคำนวณสดที่มีความหมายพอจะคุ้ม 2 คอลัมน์ (ต่างจากฟอร์มซ่อมบำรุง) จึงแค่ห่อ `lg:hidden` + เพิ่ม block เดสก์ท็อปกว้างขึ้น (`max-w-2xl`) reuse ฟอร์ม component เดิมตัวเดียวกันเป๊ะ ไม่มีการสร้างฟอร์มซ้ำ
+13. **แยกงานในอนาคต** — ผูกค่าเตือนล่วงหน้าจาก `notification_settings` เข้ากับ `flag-status.ts` จริง แล้วเปิดใช้การ์ดแจ้งเตือนใน 3e (ตอนนี้เป็น UI เปล่า) — รอ Step 8 เดิม (Email Notification System) ทำก่อน
+
+**บั๊กที่เจอเพิ่มระหว่าง Turn 3/4 และแก้แล้ว**:
+- **DataCell ไม่มี `overflow-hidden`** (3b) — คอลัมน์กว้างคงที่ข้อความชนกัน ("ครั้งล่าสุด" ทับ "ครบกำหนด") แก้โดยใส่ `overflow-hidden` ไว้ใน `DataCell` primitive เองเป็นค่า default
+- **แดชบอร์ดสลับ breakpoint ผิดที่ `md:` แทน `lg:`** (ดูข้อ 6) — บั๊กที่หลงเหลือจากตอนสร้างแดชบอร์ดเดสก์ท็อปครั้งแรกก่อนที่ Turn 3 จะนิยาม breakpoint ทางการไว้ที่ 1024px
+- **ลิสต์เอกสารมือถือโชว์ "อีก -10 วัน"** แทน "เลยกำหนดแล้ว" สำหรับฉบับที่เลยกำหนดแล้ว (`/documents` 4a) — ลืมแยกเงื่อนไข red/yellow เหมือนที่ทำถูกในเวอร์ชันเดสก์ท็อปเดียวกัน แก้โดยเช็ค `status === "red"` ก่อนแสดงข้อความคงที่แทนเลขวันติดลบ
+
+**ทดสอบทุก step เหมือนเดิม** (QA user ชั่วคราวผ่าน Supabase Admin API + Playwright ชั่วคราว, ลบทิ้งหลังใช้ทุกครั้ง) เพิ่มเติมคือทดสอบทั้ง 1440px และ 390px ทุก step เพื่อยืนยันว่าของเดิมไม่รีเกรส ไม่ใช่แค่ของใหม่ทำงาน
+
+### หน้า login/signup — แอนิเมชันโคมไฟดึงเชือก (2026-09-19)
+
+ตามคำขอผู้ใช้ (นอกแผน 13 ข้อ, เป็นดีไซน์พิเศษเฉพาะหน้า auth): `src/app/(auth)/layout.tsx` เปลี่ยนจาก card เรียบๆ เป็น `LampAuthShell` (`src/components/auth/lamp-auth-shell.tsx`) — ผู้ใช้ต้อง**ลากเชือกโคมไฟ (SVG) ลงเกิน 30px** ถึงจะ toggle เปิด/ปิดไฟ ซึ่งเผยฟอร์ม login/signup จริงพร้อมกัน (fade+slide เข้า) ใช้ `gsap`+`Draggable` ควบคุมการลาก — **ฟอร์มข้างในไม่ได้แก้เลย** (`LoginForm`/`SignupForm` ยังเป็น Supabase Auth + RHF + Zod เดิมทั้งหมด เปลี่ยนแค่เปลือกนอก) สเปกอ้างอิงจากผู้ใช้เป็นธีมมืด+gold gradient แต่**ปรับสีทั้งหมดให้เป็น warm cream tokens ของแอป** (`--rd-cta` แทน gold, `--rd-base`/`--rd-surface-card` แทนพื้นมืด) ตามที่ผู้ใช้ขอให้เข้าธีมเดียวกับทั้งแอป ไม่มีเสียงคลิก (ไม่มีไฟล์เสียงในโปรเจกต์ ตัดออกจากสเปกอ้างอิง)
+
+- **บั๊กที่เจอระหว่างทำ**: `npm install gsap` ไป prune `playwright` ทิ้งโดยไม่ตั้งใจ เพราะ **playwright ไม่เคยอยู่ใน `package.json` เลย** (ติดตั้งแบบ ad hoc ไว้ก่อนหน้านี้สำหรับสคริปต์ QA ชั่วคราวเท่านั้น นับเป็น extraneous package ที่ npm ตัดทิ้งอัตโนมัติทุกครั้งที่ `npm install` อะไรก็ตาม) — แก้ด้วย `npm install playwright --no-save` คืนกลับมาโดยไม่แตะ `package.json`/`package-lock.json` ส่วนที่ track จริง — **บทเรียน**: ถ้าจะติดตั้ง devtool ที่ไม่อยากให้อยู่ใน manifest ถาวร ต้องรู้ว่ามันจะหายไปทุกครั้งที่ติดตั้ง dependency ใหม่ตัวอื่น เช็ค `node_modules/playwright` ให้แน่ใจก่อนรันสคริปต์ QA ทุกครั้งหลัง `npm install`
+
+### รอบตรวจโค้ดก่อน push (2026-09-19) — บั๊กที่เจอและแก้แล้ว
+
+ตรวจ diff ทั้งหมดด้วย review หลายมุมมอง แล้วแก้ตามลำดับ (ทดสอบผ่านเบราว์เซอร์จริงทุกข้อ):
+- **เลขไมล์ว่าง → 0**: `Number("")` = `0` ผ่าน validation ทำให้ล้างช่องแล้วบันทึกเลขไมล์เป็น 0 เงียบๆ — เช็ค `mileageInput.trim() === ""` ก่อน (`vehicles/[id]/page.tsx`)
+- **breakpoint ของ shell**: `app-shell.tsx`/`mobile-bottom-nav.tsx` (และปุ่มออกจากระบบใน `profile/page.tsx`) เปลี่ยนจาก `md:` เป็น `lg:` ให้ตรงกับที่ทุกหน้าสลับ mobile/desktop (1024px) — กฎ: **ทุกอย่างที่ผูกกับ shell ต้องใช้ `lg:`** อย่าใช้ `md:` อีก; padding นอกสุดของทุกหน้าก็เปลี่ยนเป็น `lg:p-8`
+- **`PUT/DELETE /api/vehicles/[id]/maintenance-logs/[logId]`** กรอง `.eq("vehicle_id", vehicleId)` ด้วย (เดิมกรองแค่ `logId` ทำให้ยิงข้ามคันแล้ว sync เลขไมล์ผิดคัน; ตอนนี้ log ที่ไม่ใช่ของคันนั้นได้ 404). route `documents/[docId]` มีรูปแบบเดียวกันแต่ไม่มี mileage sync จึงยังไม่แก้
+- dashboard ตอน error/loading/ยังไม่มีรถ ย้ายเป็นธีม warm cream; `ProfileForm` ใส่ double-submit guard; dialog ลบแสดง ฿ ผ่าน `bahtValue()` (แยก `font-sans`); ยอดเอกสารรายปีใช้ `issue_date || created_at`; หน้ารายการรถเดสก์ท็อปแสดง error แทน spinner ค้าง (`detailsError` แยกจากมือถือ)
+- หน้าแก้ไขบันทึกซ่อมบำรุงมี layout เดสก์ท็อปแล้ว (แบบเดียวกับฟอร์มอื่นใน Step 12)
+- **refactor**: `getMostUrgentItem` เป็น wrapper ของ `getTopUrgentItems(..., 1)[0]`; สีกราฟรวมที่ `src/lib/chart-colors.ts`; `formatDueLabel()` ตัวเดียวในหน้า `/documents` (และ `daysUntil` นับจากเที่ยงคืนท้องถิ่นเหมือน `getDateFlagStatus`); AppShell ยิง `/api/documents` ครั้งเดียวแล้วส่ง `hasDocumentAlert` ให้ sidebar+bottom nav; dialog ลบรถ/ลบบันทึกรับ prop `detail` จากหน้าแม่เพื่อไม่ต้อง fetch ซ้ำ (`vehicle-card.tsx` ไม่มีข้อมูลจึงยัง fetch ตอนเปิดเหมือนเดิม)
+- หมายเหตุการทดสอบ: ใน `next dev` effect ทำงานสองรอบ (StrictMode) จึงเห็น request ซ้ำ — นับ request ต้องดูบน `next build && next start`
+
+### วิธีทดสอบตลอดการรีดีไซน์
+
+ทุก step ใช้บัญชี QA ชั่วคราวสร้างผ่าน Supabase Admin API (`email_confirm:true`) + สคริปต์ Playwright ชั่วคราว ยืนยันด้วย screenshot จริง + เช็ค `console --errors` ทุกครั้ง (ไม่ใช่แค่ตรวจโค้ด/build ผ่าน) แล้วลบข้อมูลทดสอบ/สคริปต์ทิ้งหลังใช้เสมอตามธรรมเนียมโปรเจกต์ — double-submit guard ที่แก้ไว้ตั้งแต่ Step 9 เดิม ถูกทดสอบซ้ำทุกฟอร์มที่เขียนใหม่ (ยังทำงานถูกต้อง ไม่มีการรีเกรส)
+
+**ยังไม่ได้ commit/push งานรีดีไซน์นี้ (มือถือ + เดสก์ท็อป Turn 3/4) ขึ้น GitHub** — เหมือนกับ REST API refactor ก่อนหน้า รอผู้ใช้ทดสอบเองยืนยันก่อน
 
 ## แจ้งเตือน
 

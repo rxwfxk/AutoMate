@@ -1,12 +1,24 @@
 import Link from "next/link";
 import { Pencil } from "lucide-react";
+import { cn } from "cn";
 
-import { getDateFlagStatus } from "@/lib/flag-status";
+import { getDateFlagStatus, type FlagStatus } from "@/lib/flag-status";
 import { DOCUMENT_TYPE_ICON, DOCUMENT_TYPE_LABEL } from "@/lib/document-types";
-import { FlagBadge } from "@/components/ui/flag-badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/redesign/card";
 import { DeleteDocumentDialog } from "@/components/documents/delete-document-dialog";
 import type { Document } from "@/types/database.types";
+
+const ICON_BG: Record<FlagStatus, string> = {
+  red: "bg-flag-overdue-soft text-flag-overdue-soft-foreground",
+  yellow: "bg-flag-due-soon-soft text-flag-due-soon-soft-foreground",
+  green: "bg-flag-ok-soft text-flag-ok-soft-foreground",
+};
+
+const DUE_TEXT_COLOR: Record<FlagStatus, string> = {
+  red: "text-flag-overdue",
+  yellow: "text-flag-due-soon",
+  green: "text-ink-3",
+};
 
 export function DocumentItem({
   document,
@@ -24,29 +36,36 @@ export function DocumentItem({
   const status = getDateFlagStatus(document.expiry_date);
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-4">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted">
-        <Icon className="size-4 text-muted-foreground" />
+    <Card
+      size="list"
+      className={cn(
+        "flex items-start gap-3.5",
+        status === "yellow" && "border-[1.5px] border-flag-due-soon bg-flag-due-soon-soft",
+        status === "red" && "border-[1.5px] border-flag-overdue bg-flag-overdue-soft",
+      )}
+    >
+      <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-icon", ICON_BG[status])}>
+        <Icon className="size-5" />
       </div>
 
-      <div className="flex flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-medium">{label}</h3>
-          <FlagBadge status={status} />
-        </div>
+      <div className="min-w-0 flex-1">
+        <h3 className="text-base font-extrabold text-ink">{label}</h3>
 
-        <p className="text-sm text-muted-foreground">
+        {document.policy_number && (
+          <p className="mt-0.5 text-[13px] text-ink-3">เลขที่ {document.policy_number}</p>
+        )}
+
+        <p className={cn("mt-0.5 font-mono text-[13px]", DUE_TEXT_COLOR[status])}>
           หมดอายุ{" "}
           {new Date(document.expiry_date).toLocaleDateString("th-TH", {
             year: "numeric",
             month: "short",
             day: "numeric",
           })}
-          {document.policy_number ? ` · เลขที่ ${document.policy_number}` : ""}
         </p>
 
         {document.cost !== null && (
-          <p className="text-sm">
+          <p className="mt-0.5 text-sm text-ink-3">
             <span className="font-sans">฿ </span>
             <span className="font-mono">{document.cost.toLocaleString("th-TH")}</span>
           </p>
@@ -57,28 +76,30 @@ export function DocumentItem({
             href={document.file_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-primary underline-offset-4 hover:underline"
+            className="mt-1 inline-block text-sm font-bold text-cta underline-offset-4 hover:underline"
           >
             ดูไฟล์เอกสาร
           </a>
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-0.5">
         <Link
           href={editHref}
-          className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
           aria-label={`แก้ไข ${label}`}
+          className="flex size-8 items-center justify-center rounded-icon text-ink-muted hover:bg-base"
         >
-          <Pencil />
+          <Pencil className="size-4" />
         </Link>
         <DeleteDocumentDialog
           docId={document.id}
           label={label}
           deleteUrl={deleteUrl}
+          cost={document.cost}
+          hasFile={!!document.file_url}
           onDeleted={onDeleted}
         />
       </div>
-    </div>
+    </Card>
   );
 }

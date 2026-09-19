@@ -10,9 +10,8 @@ import { Loader2, MailCheck } from "lucide-react";
 import type { AuthError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { signupSchema, type SignupInput } from "@/lib/validations/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField, fieldInputClassName } from "@/components/redesign/form-field";
+import { Button } from "@/components/redesign/button";
 
 function translateSignupError(error: AuthError): string {
   switch (error.code) {
@@ -77,9 +76,9 @@ export function SignupForm() {
   if (awaitingConfirmation) {
     return (
       <div className="flex flex-col items-center gap-3 text-center">
-        <MailCheck className="size-10 text-flag-green" />
-        <p className="text-foreground">ส่งอีเมลยืนยันไปแล้ว</p>
-        <p className="text-sm text-muted-foreground">
+        <MailCheck className="size-10 text-flag-ok" />
+        <p className="font-bold text-ink">ส่งอีเมลยืนยันไปแล้ว</p>
+        <p className="text-sm text-ink-muted">
           กรุณาตรวจสอบกล่องอีเมลของคุณและกดลิงก์ยืนยันเพื่อเข้าสู่ระบบ
         </p>
       </div>
@@ -87,76 +86,71 @@ export function SignupForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="firstName">ชื่อ</Label>
-          <Input id="firstName" autoComplete="given-name" placeholder="สมชาย" {...register("firstName")} />
-          {errors.firstName && (
-            <p className="text-sm text-flag-red">{errors.firstName.message}</p>
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="lastName">นามสกุล</Label>
-          <Input id="lastName" autoComplete="family-name" placeholder="ใจดี" {...register("lastName")} />
-          {errors.lastName && (
-            <p className="text-sm text-flag-red">{errors.lastName.message}</p>
-          )}
-        </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3.5" noValidate>
+      <div className="grid grid-cols-2 gap-2.5">
+        <FormField label="ชื่อ" htmlFor="firstName" error={errors.firstName?.message}>
+          <input
+            id="firstName"
+            autoComplete="given-name"
+            placeholder="สมชาย"
+            className={fieldInputClassName({ invalid: !!errors.firstName })}
+            {...register("firstName")}
+          />
+        </FormField>
+        <FormField label="นามสกุล" htmlFor="lastName" error={errors.lastName?.message}>
+          <input
+            id="lastName"
+            autoComplete="family-name"
+            placeholder="ใจดี"
+            className={fieldInputClassName({ invalid: !!errors.lastName })}
+            {...register("lastName")}
+          />
+        </FormField>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email">อีเมล</Label>
-        <Input
+      <FormField label="อีเมล" htmlFor="email" error={errors.email?.message}>
+        <input
           id="email"
           type="email"
           autoComplete="email"
           placeholder="you@example.com"
+          className={fieldInputClassName({ invalid: !!errors.email })}
           {...register("email")}
         />
-        {errors.email && (
-          <p className="text-sm text-flag-red">{errors.email.message}</p>
-        )}
-      </div>
+      </FormField>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="password">รหัสผ่าน</Label>
-        <Input
+      <FormField label="รหัสผ่าน" htmlFor="password" error={errors.password?.message}>
+        <input
           id="password"
           type="password"
           autoComplete="new-password"
           placeholder="อย่างน้อย 8 ตัวอักษร"
+          className={fieldInputClassName({ invalid: !!errors.password })}
           {...register("password")}
         />
-        {errors.password && (
-          <p className="text-sm text-flag-red">{errors.password.message}</p>
-        )}
-      </div>
+      </FormField>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="confirmPassword">ยืนยันรหัสผ่าน</Label>
-        <Input
+      <FormField label="ยืนยันรหัสผ่าน" htmlFor="confirmPassword" error={errors.confirmPassword?.message}>
+        <input
           id="confirmPassword"
           type="password"
           autoComplete="new-password"
           placeholder="••••••••"
+          className={fieldInputClassName({ invalid: !!errors.confirmPassword })}
           {...register("confirmPassword")}
         />
-        {errors.confirmPassword && (
-          <p className="text-sm text-flag-red">{errors.confirmPassword.message}</p>
-        )}
-      </div>
+      </FormField>
 
-      {formError && <p className="text-sm text-flag-red">{formError}</p>}
+      {formError && <p className="text-sm font-bold text-flag-overdue">{formError}</p>}
 
-      <Button type="submit" disabled={isSubmitting} className="mt-2">
+      <Button type="submit" disabled={isSubmitting} className="mt-1 w-full">
         {isSubmitting && <Loader2 className="animate-spin" />}
         สมัครสมาชิก
       </Button>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-center text-sm text-ink-muted">
         มีบัญชีอยู่แล้ว?{" "}
-        <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">
+        <Link href="/login" className="font-bold text-cta underline-offset-4 hover:underline">
           เข้าสู่ระบบ
         </Link>
       </p>

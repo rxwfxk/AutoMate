@@ -53,6 +53,55 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ---- Warm redesign tokens (design_handoff_automate_redesign/README.md) ----
+   * Additive only: a separate "warm cream" visual system, not yet wired into
+   * any component. Raw values live in the --rd-* block below; mapped here so
+   * Tailwind generates plain utilities (bg-base, text-ink, rounded-card, …). */
+  --font-nunito: var(--rd-font-nunito);
+  --font-ibm-plex-mono: var(--rd-font-ibm-plex-mono);
+  --color-base: var(--rd-base);
+  --color-surface: var(--rd-surface);
+  --color-surface-card: var(--rd-surface-card);
+  --color-ink: var(--rd-ink);
+  --color-ink-2: var(--rd-ink-2);
+  --color-ink-3: var(--rd-ink-3);
+  --color-ink-muted: var(--rd-ink-muted);
+  --color-ink-faint: var(--rd-ink-faint);
+  --color-line: var(--rd-line);
+  --color-line-strong: var(--rd-line-strong);
+  --color-line-dash: var(--rd-line-dash);
+  --color-ink-line: var(--rd-ink-line);
+  --color-ink-deep-2: var(--rd-ink-deep-2);
+  --color-ink-deep-3: var(--rd-ink-deep-3);
+  --color-stripe-light: var(--rd-stripe-light);
+  --color-cta: var(--rd-cta);
+  --color-cta-hover: var(--rd-cta-hover);
+  --color-cta-soft: var(--rd-cta-soft);
+  --color-cta-soft-line: var(--rd-cta-soft-line);
+  --color-cta-ink: var(--rd-cta-ink);
+  --color-flag-overdue: var(--rd-flag-overdue);
+  --color-flag-overdue-soft: var(--rd-flag-overdue-soft);
+  --color-flag-overdue-soft-foreground: var(--rd-flag-overdue-soft-foreground);
+  --color-flag-due-soon: var(--rd-flag-due-soon);
+  --color-flag-due-soon-soft: var(--rd-flag-due-soon-soft);
+  --color-flag-due-soon-soft-foreground: var(--rd-flag-due-soon-soft-foreground);
+  --color-flag-ok: var(--rd-flag-ok);
+  --color-flag-ok-soft: var(--rd-flag-ok-soft);
+  --color-flag-ok-soft-foreground: var(--rd-flag-ok-soft-foreground);
+  --color-flag-ok-on-dark: var(--rd-flag-ok-on-dark);
+  --color-flag-ok-on-dark-foreground: var(--rd-flag-ok-on-dark-foreground);
+  --color-chart-maintenance: var(--rd-chart-maintenance);
+  --color-chart-documents: var(--rd-chart-documents);
+  --color-chart-bar-soft: var(--rd-chart-bar-soft);
+  --radius-sheet-top: var(--rd-radius-sheet-top);
+  --radius-card: var(--rd-radius-card);
+  --radius-list: var(--rd-radius-list);
+  --radius-button: var(--rd-radius-button);
+  --radius-icon: var(--rd-radius-icon);
+  --shadow-card: var(--rd-shadow-card);
+  --shadow-sheet: var(--rd-shadow-sheet);
+  --shadow-fab: var(--rd-shadow-fab);
 }
 
 /*
@@ -193,6 +242,94 @@
   --flag-yellow-foreground: #2b2400;
   --flag-red: #e10600;
   --flag-red-foreground: #ffffff;
+}
+
+/*
+ * Warm redesign design tokens (design_handoff_automate_redesign/README.md).
+ * Additive only — a separate "warm cream" visual system for the planned UI
+ * redesign, not yet wired into any component. Existing Pit Wall tokens above
+ * are untouched. No dark-mode variant is defined yet (per the handoff doc,
+ * the redesign's dark palette hasn't been designed).
+ */
+:root {
+  /* Fonts — literal fallback stacks for now. Swap in next/font CSS vars once
+     Nunito / IBM Plex Sans Thai Looped / IBM Plex Mono are loaded in
+     layout.tsx (a separate step — not done here). */
+  --rd-font-nunito: "Nunito", "IBM Plex Sans Thai Looped", ui-sans-serif,
+    sans-serif;
+  --rd-font-ibm-plex-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular",
+    monospace;
+
+  /* Surfaces & ink (text) */
+  --rd-base: #efe7e0;
+  --rd-surface: #fff8f4;
+  --rd-surface-card: #ffffff;
+  --rd-ink: #241a14;
+  --rd-ink-2: #3d3128;
+  --rd-ink-3: #5e4f45;
+  --rd-ink-muted: #8c7a6e;
+  --rd-ink-faint: #a08a7b;
+  --rd-line: #efe2d8;
+  --rd-line-strong: #e2d3c8;
+  --rd-line-dash: #c9b7aa;
+  --rd-ink-line: #4a3a2f; /* border color for buttons on the dark ink surface */
+  --rd-ink-deep-2: #31251d;
+  --rd-ink-deep-3: #3a2c22;
+  --rd-stripe-light: #f6ece4;
+
+  /* CTA — reserved for calls-to-action only; never a status color
+     (would be confused with the red "overdue" flag). */
+  --rd-cta: #ff5a2c;
+  --rd-cta-hover: #d8410f;
+  --rd-cta-soft: #ffefe7;
+  --rd-cta-soft-line: #ffcdbb;
+  --rd-cta-ink: #a8482a;
+
+  /* Status flags — tuned for light/cream backgrounds. Distinct from the Pit
+     Wall --flag-* tokens above, which are tuned for dark backgrounds and stay
+     in use until screens are migrated to this palette. */
+  --rd-flag-overdue: #e10600;
+  --rd-flag-overdue-soft: #ffefe7;
+  --rd-flag-overdue-soft-foreground: #e10600;
+  --rd-flag-due-soon: #e8a020;
+  --rd-flag-due-soon-soft: #ffe9c9;
+  --rd-flag-due-soon-soft-foreground: #b8791a;
+  --rd-flag-ok: #2fa37a;
+  --rd-flag-ok-soft: #d9f2e7;
+  --rd-flag-ok-soft-foreground: #1e7a59;
+  /* Badge on a dark card (e.g. vehicle info card) — old Pit Wall teal, kept as-is */
+  --rd-flag-ok-on-dark: #00d2be;
+  --rd-flag-ok-on-dark-foreground: #0c2621;
+
+  /* Expense chart — unchanged from the existing dashboard chart palette */
+  --rd-chart-maintenance: #3987e5;
+  --rd-chart-documents: #d95926;
+  --rd-chart-bar-soft: #ffd9cc;
+
+  /* Radii (px) — handoff gives ranges; picked a representative value from
+     each. Use an arbitrary value for edge cases within the documented range. */
+  --rd-radius-sheet-top: 34px; /* bottom sheet top corners */
+  --rd-radius-card: 26px; /* 24-30px: main cards / CTA cards */
+  --rd-radius-list: 20px; /* 18-22px: list cards / inputs */
+  --rd-radius-button: 19px; /* 18-20px: buttons */
+  --rd-radius-icon: 14px; /* 9-18px: icon buttons / icon boxes */
+
+  /* Shadows — list-style cards intentionally have none (use a 1px --line border) */
+  --rd-shadow-card: 0 24px 48px -24px rgba(36, 26, 20, 0.35);
+  --rd-shadow-sheet: 0 -18px 40px -20px rgba(36, 26, 20, 0.35);
+  --rd-shadow-fab: 0 12px 24px -8px rgba(36, 26, 20, 0.5);
+
+  /* Image placeholder stripes (diagonal, 12px band) */
+  --rd-placeholder-light: repeating-linear-gradient(
+    135deg,
+    var(--rd-stripe-light) 0 12px,
+    var(--rd-surface) 12px 24px
+  );
+  --rd-placeholder-dark: repeating-linear-gradient(
+    135deg,
+    var(--rd-ink-deep-2) 0 12px,
+    var(--rd-ink-deep-3) 12px 24px
+  );
 }
 
 @layer base {

@@ -2,9 +2,10 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Paperclip } from "lucide-react";
+import { ChevronDown, Loader2, Paperclip } from "lucide-react";
+import { cn } from "cn";
 
 import {
   vehicleDocumentSchema,
@@ -17,16 +18,8 @@ import { DOCUMENT_TYPE_LABEL, VEHICLE_DOCUMENT_TYPES } from "@/lib/document-type
 import { createClient } from "@/lib/supabase/client";
 import { uploadDocumentFile, deleteDocumentFileByUrl } from "@/lib/supabase/storage";
 import { apiFetch } from "@/lib/api-client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FormField, fieldInputClassName } from "@/components/redesign/form-field";
+import { Button } from "@/components/redesign/button";
 import type { Document } from "@/types/database.types";
 
 export function VehicleDocumentForm({
@@ -52,7 +45,6 @@ export function VehicleDocumentForm({
   const {
     register,
     handleSubmit,
-    control,
     formState: { errors, isSubmitting },
   } = useForm<VehicleDocumentFormValues, unknown, VehicleDocumentInput>({
     resolver: zodResolver(vehicleDocumentSchema),
@@ -65,8 +57,6 @@ export function VehicleDocumentForm({
           cost: document.cost ?? undefined,
         }
       : {
-          // Give the Select a defined value from the first render — Base UI
-          // warns if it flips from uncontrolled (undefined) to controlled.
           document_type: "" as VehicleDocumentFormValues["document_type"],
         },
   });
@@ -157,73 +147,79 @@ export function VehicleDocumentForm({
   }
 
   return (
-    <form onSubmit={guardedSubmit} className="flex flex-col gap-4" noValidate>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="document_type">ประเภทเอกสาร</Label>
-        <Controller
-          name="document_type"
-          control={control}
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger id="document_type" className="w-full">
-                <SelectValue placeholder="เลือกประเภทเอกสาร">
-                  {(value: string | null) =>
-                    value
-                      ? DOCUMENT_TYPE_LABEL[value as keyof typeof DOCUMENT_TYPE_LABEL]
-                      : "เลือกประเภทเอกสาร"
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {VEHICLE_DOCUMENT_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {DOCUMENT_TYPE_LABEL[type]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-        {errors.document_type && (
-          <p className="text-sm text-flag-red">{errors.document_type.message}</p>
-        )}
-      </div>
+    <form onSubmit={guardedSubmit} className="flex flex-col gap-3.5" noValidate>
+      <FormField label="ประเภทเอกสาร" htmlFor="document_type" required error={errors.document_type?.message}>
+        <div className="relative">
+          <select
+            id="document_type"
+            className={cn(
+              fieldInputClassName({ emphasized: true, invalid: !!errors.document_type }),
+              "appearance-none pr-10",
+            )}
+            {...register("document_type")}
+          >
+            <option value="" disabled>
+              เลือกประเภทเอกสาร
+            </option>
+            {VEHICLE_DOCUMENT_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {DOCUMENT_TYPE_LABEL[type]}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-ink-muted" />
+        </div>
+      </FormField>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="issue_date">วันที่ออก</Label>
-          <Input id="issue_date" type="date" {...register("issue_date")} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="expiry_date">วันหมดอายุ</Label>
-          <Input id="expiry_date" type="date" {...register("expiry_date")} />
-          {errors.expiry_date && (
-            <p className="text-sm text-flag-red">{errors.expiry_date.message}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="policy_number">เลขกรมธรรม์/เลขอ้างอิง</Label>
-          <Input id="policy_number" {...register("policy_number")} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="cost">ค่าใช้จ่าย (บาท)</Label>
-          <Input
-            id="cost"
-            type="number"
-            inputMode="numeric"
-            className="font-mono"
-            placeholder="0"
-            {...register("cost")}
+      <div className="grid grid-cols-2 gap-2.5">
+        <FormField label="วันที่ออก" htmlFor="issue_date">
+          <input
+            id="issue_date"
+            type="date"
+            className={cn(fieldInputClassName(), "font-mono")}
+            {...register("issue_date")}
           />
-          {errors.cost && <p className="text-sm text-flag-red">{errors.cost.message}</p>}
-        </div>
+        </FormField>
+        <FormField label="วันหมดอายุ" htmlFor="expiry_date" error={errors.expiry_date?.message}>
+          <input
+            id="expiry_date"
+            type="date"
+            className={cn(fieldInputClassName({ invalid: !!errors.expiry_date }), "font-mono")}
+            {...register("expiry_date")}
+          />
+        </FormField>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label>ไฟล์เอกสาร</Label>
+      <div className="grid grid-cols-2 gap-2.5">
+        <FormField label="เลขกรมธรรม์/เลขอ้างอิง" htmlFor="policy_number">
+          <input id="policy_number" className={fieldInputClassName()} {...register("policy_number")} />
+        </FormField>
+        <FormField
+          label={
+            <>
+              ค่าใช้จ่าย <span className="font-normal text-ink-faint">(ไม่บังคับ)</span>
+            </>
+          }
+          htmlFor="cost"
+          error={errors.cost?.message}
+        >
+          <div className="relative">
+            <span className="pointer-events-none absolute top-1/2 left-3.75 -translate-y-1/2 text-sm font-bold text-ink-muted">
+              ฿
+            </span>
+            <input
+              id="cost"
+              type="number"
+              inputMode="numeric"
+              placeholder="0"
+              className={cn(fieldInputClassName(), "pl-8 font-mono")}
+              {...register("cost")}
+            />
+          </div>
+        </FormField>
+      </div>
+
+      <FormField label="ไฟล์เอกสาร">
         <input
           ref={fileInputRef}
           type="file"
@@ -231,24 +227,37 @@ export function VehicleDocumentForm({
           onChange={handleFileChange}
           className="hidden"
         />
-        <Button
+        <button
           type="button"
-          variant="outline"
-          className="justify-start gap-2"
           onClick={() => fileInputRef.current?.click()}
+          className="flex h-20.5 w-full flex-col items-center justify-center gap-1 rounded-list border-[1.5px] border-dashed border-line-dash bg-surface text-center"
         >
-          <Paperclip />
-          {fileName ?? "แนบไฟล์ (JPG, PNG หรือ PDF)"}
+          <span className="flex items-center gap-1.5 text-[15px] font-extrabold text-ink">
+            <Paperclip className="size-4" />
+            {fileName ?? "แตะเพื่อแนบไฟล์เอกสาร"}
+          </span>
+          <span className="font-mono text-[11px] text-ink-faint">
+            รองรับ JPG, PNG หรือ PDF · สูงสุด 10MB
+          </span>
+        </button>
+        {fileError && <p className="mt-1.5 text-xs font-bold text-flag-overdue">{fileError}</p>}
+      </FormField>
+
+      {formError && <p className="text-sm font-bold text-flag-overdue">{formError}</p>}
+
+      <div className="mt-1 flex gap-2.5">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="w-15 shrink-0 rounded-button border border-line-strong text-sm font-extrabold text-ink"
+        >
+          ยกเลิก
+        </button>
+        <Button type="submit" disabled={isSubmitting} className="flex-1">
+          {isSubmitting && <Loader2 className="animate-spin" />}
+          {isEdit ? "บันทึกการแก้ไข" : "บันทึก"}
         </Button>
-        {fileError && <p className="text-sm text-flag-red">{fileError}</p>}
       </div>
-
-      {formError && <p className="text-sm text-flag-red">{formError}</p>}
-
-      <Button type="submit" disabled={isSubmitting} className="mt-2">
-        {isSubmitting && <Loader2 className="animate-spin" />}
-        {isEdit ? "บันทึกการแก้ไข" : "บันทึก"}
-      </Button>
     </form>
   );
 }

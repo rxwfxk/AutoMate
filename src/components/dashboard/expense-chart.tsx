@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Bar,
   BarChart,
@@ -10,18 +11,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Button } from "@/components/ui/button";
+import { cn } from "cn";
+import { MAINTENANCE_COLOR, DOCUMENTS_COLOR } from "@/lib/chart-colors";
 import type { MonthlyExpensePoint, YearlyExpensePoint } from "@/lib/dashboard-data";
 
-// Validated against our dark surface (#15151e) with scripts/validate_palette.js
-// from the dataviz skill — CVD ΔE 26.8, normal-vision ΔE 31.8, both well clear
-// of the floors. Deliberately not the flag-status hues (teal/gold/red), which
-// already carry "overdue" meaning elsewhere in this app.
-const MAINTENANCE_COLOR = "#3987e5";
-const DOCUMENTS_COLOR = "#d95926";
-
-const GRID_COLOR = "rgba(255,255,255,0.08)";
-const AXIS_COLOR = "#9a9aad";
+const GRID_COLOR = "#efe2d8"; // --rd-line
+const AXIS_COLOR = "#8c7a6e"; // --rd-ink-muted
 
 type Point = MonthlyExpensePoint | YearlyExpensePoint;
 
@@ -41,26 +36,26 @@ function CustomTooltip({
   const total = maintenance + documents;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-3 text-sm shadow-md">
-      <p className="mb-1.5 font-medium">{label}</p>
+    <div className="rounded-list border border-line bg-surface-card p-3 text-sm shadow-card">
+      <p className="mb-1.5 font-bold text-ink">{label}</p>
       <div className="flex items-center gap-2">
         <span className="size-2 rounded-full" style={{ backgroundColor: MAINTENANCE_COLOR }} />
-        <span className="text-muted-foreground">ซ่อมบำรุง</span>
-        <span className="ml-auto">
+        <span className="text-ink-3">ซ่อมบำรุง</span>
+        <span className="ml-auto text-ink">
           <span className="font-sans">฿ </span>
           <span className="font-mono">{maintenance.toLocaleString("th-TH")}</span>
         </span>
       </div>
       <div className="flex items-center gap-2">
         <span className="size-2 rounded-full" style={{ backgroundColor: DOCUMENTS_COLOR }} />
-        <span className="text-muted-foreground">เอกสาร</span>
-        <span className="ml-auto">
+        <span className="text-ink-3">เอกสาร</span>
+        <span className="ml-auto text-ink">
           <span className="font-sans">฿ </span>
           <span className="font-mono">{documents.toLocaleString("th-TH")}</span>
         </span>
       </div>
-      <div className="mt-1.5 flex items-center gap-2 border-t border-border pt-1.5 font-medium">
-        <span className="text-muted-foreground">รวม</span>
+      <div className="mt-1.5 flex items-center gap-2 border-t border-line pt-1.5 font-bold text-ink">
+        <span className="text-ink-3">รวม</span>
         <span className="ml-auto">
           <span className="font-sans">฿ </span>
           <span className="font-mono">{total.toLocaleString("th-TH")}</span>
@@ -83,42 +78,48 @@ export function ExpenseChart({
   const periodTotal = data.reduce((sum, d) => sum + d.maintenance + d.documents, 0);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+    <div className="rounded-card bg-surface-card p-5">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-4 text-xs">
-          <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full" style={{ backgroundColor: MAINTENANCE_COLOR }} />
-            <span className="text-muted-foreground">ซ่อมบำรุง</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full" style={{ backgroundColor: DOCUMENTS_COLOR }} />
-            <span className="text-muted-foreground">เอกสาร</span>
-          </span>
-        </div>
-        <div className="flex gap-1">
-          <Button
+        <h2 className="text-lg font-extrabold text-ink">ค่าใช้จ่าย</h2>
+        <div className="flex gap-1.5 rounded-full bg-base p-1">
+          <button
             type="button"
-            size="sm"
-            variant={view === "monthly" ? "default" : "outline"}
             onClick={() => setView("monthly")}
+            className={cn(
+              "rounded-full px-3.5 py-1.5 text-[13px] font-bold",
+              view === "monthly" ? "bg-ink text-surface" : "text-ink-3",
+            )}
           >
             รายเดือน
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
-            size="sm"
-            variant={view === "yearly" ? "default" : "outline"}
             onClick={() => setView("yearly")}
+            className={cn(
+              "rounded-full px-3.5 py-1.5 text-[13px] font-bold",
+              view === "yearly" ? "bg-ink text-surface" : "text-ink-3",
+            )}
           >
             รายปี
-          </Button>
+          </button>
         </div>
       </div>
 
-      <p className="mb-3 text-2xl font-bold tracking-tight">
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-[13px] font-bold">
+        <span className="flex items-center gap-1.5">
+          <span className="size-2.5 rounded-[3px]" style={{ backgroundColor: MAINTENANCE_COLOR }} />
+          <span className="text-ink-3">ซ่อมบำรุง</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="size-2.5 rounded-[3px]" style={{ backgroundColor: DOCUMENTS_COLOR }} />
+          <span className="text-ink-3">เอกสาร</span>
+        </span>
+      </div>
+
+      <p className="mb-3 text-2xl font-bold tracking-tight text-ink">
         <span className="font-sans">฿ </span>
         <span className="font-mono">{periodTotal.toLocaleString("th-TH")}</span>
-        <span className="ml-1.5 text-sm font-normal text-muted-foreground">
+        <span className="ml-1.5 text-sm font-normal text-ink-muted">
           {view === "monthly" ? "12 เดือนล่าสุด" : "รวมทุกปี"}
         </span>
       </p>
@@ -140,15 +141,18 @@ export function ExpenseChart({
               width={56}
               tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(36,26,20,0.05)" }} />
             <Bar dataKey="maintenance" stackId="cost" fill={MAINTENANCE_COLOR} radius={[0, 0, 0, 0]} />
             <Bar dataKey="documents" stackId="cost" fill={DOCUMENTS_COLOR} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       ) : (
-        <p className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">
-          ยังไม่มีข้อมูลค่าใช้จ่าย
-        </p>
+        <div className="flex h-[240px] flex-col items-center justify-center gap-2 text-sm text-ink-muted">
+          <p>ยังไม่มีค่าใช้จ่ายที่บันทึกไว้</p>
+          <Link href="/vehicles" className="font-bold text-cta">
+            + เพิ่มบันทึก
+          </Link>
+        </div>
       )}
     </div>
   );

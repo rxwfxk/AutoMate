@@ -1,30 +1,38 @@
 import Link from "next/link";
 import { Pencil } from "lucide-react";
+import { cn } from "cn";
 
-import { getMaintenanceFlagStatus } from "@/lib/flag-status";
-import { getMaintenanceIcon } from "@/lib/maintenance-icons";
-import { FlagBadge } from "@/components/ui/flag-badge";
-import { buttonVariants } from "@/components/ui/button";
+import { getMaintenanceFlagStatus, type FlagStatus } from "@/lib/flag-status";
+import { Card } from "@/components/redesign/card";
+import { StatusDot } from "@/components/redesign/status";
 import { DeleteMaintenanceLogDialog } from "@/components/maintenance/delete-maintenance-log-dialog";
-import type { MaintenanceLog, MaintenanceType } from "@/types/database.types";
+import type { Document, MaintenanceLog, MaintenanceType, Vehicle } from "@/types/database.types";
 
 export type MaintenanceLogWithType = MaintenanceLog & {
   maintenance_types: Pick<MaintenanceType, "name" | "icon" | "default_interval_km"> | null;
+};
+
+const DUE_TEXT_COLOR: Record<FlagStatus, string> = {
+  red: "text-flag-overdue",
+  yellow: "text-flag-due-soon",
+  green: "text-ink-3",
 };
 
 export function MaintenanceLogItem({
   log,
   vehicleId,
   currentMileage,
+  vehicleDetail,
   onDeleted,
 }: {
   log: MaintenanceLogWithType;
   vehicleId: string;
   currentMileage: number;
+  /** The page's already-loaded vehicle payload, so the delete dialog needn't refetch it. */
+  vehicleDetail?: { vehicle: Vehicle; logs: MaintenanceLogWithType[]; documents: Document[] };
   onDeleted?: (logId: string) => void;
 }) {
   const type = log.maintenance_types;
-  const Icon = getMaintenanceIcon(type?.icon ?? null);
   const status = getMaintenanceFlagStatus({
     nextDueDate: log.next_due_date,
     nextDueMileage: log.next_due_mileage,
@@ -33,18 +41,20 @@ export function MaintenanceLogItem({
   });
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-4">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted">
-        <Icon className="size-4 text-muted-foreground" />
-      </div>
+    <Card
+      size="list"
+      className={cn(
+        "flex items-start gap-3",
+        status === "red" && "border-[1.5px] border-flag-overdue bg-flag-overdue-soft",
+      )}
+    >
+      <StatusDot status={status} className="mt-1.5 shrink-0" />
 
-      <div className="flex flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-medium">{type?.name ?? "ไม่ระบุประเภท"}</h3>
-          <FlagBadge status={status} />
-        </div>
+      <div className="min-w-0 flex-1">
+        <h3 className="text-base font-extrabold text-ink">{type?.name ?? "ไม่ระบุประเภท"}</h3>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-0.5 text-[13px] text-ink-3">
+          ครั้งล่าสุด{" "}
           {new Date(log.service_date).toLocaleDateString("th-TH", {
             year: "numeric",
             month: "short",
@@ -55,58 +65,58 @@ export function MaintenanceLogItem({
           {log.shop_name ? ` · ${log.shop_name}` : ""}
         </p>
 
-        {log.cost !== null && (
-          <p className="text-sm">
-            <span className="font-sans">฿ </span>
-            <span className="font-mono">{log.cost.toLocaleString("th-TH")}</span>
-          </p>
-        )}
-
         {(log.next_due_date || log.next_due_mileage) && (
-          <p className="text-xs text-muted-foreground">
-            รอบถัดไป:{" "}
-            {log.next_due_mileage && (
-              <span className="font-mono">{log.next_due_mileage.toLocaleString("th-TH")} กม.</span>
-            )}
-            {log.next_due_mileage && log.next_due_date ? " หรือ " : ""}
-            {log.next_due_date &&
-              new Date(log.next_due_date).toLocaleDateString("th-TH", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
+          <p className={cn("mt-0.5 font-mono text-[13px]", DUE_TEXT_COLOR[status])}>
+            ครบกำหนด{" "}
+            {log.next_due_mileage ? `${log.next_due_mileage.toLocaleString("th-TH")} กม.` : ""}
+            {log.next_due_mileage && log.next_due_date ? " / " : ""}
+            {log.next_due_date
+              ? new Date(log.next_due_date).toLocaleDateString("th-TH", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })
+              : ""}
           </p>
         )}
 
-        {log.notes && <p className="text-sm text-muted-foreground">{log.notes}</p>}
+        {log.notes && <p className="mt-1 text-sm text-ink-3">{log.notes}</p>}
 
         {log.receipt_image_url && (
           <a
             href={log.receipt_image_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-primary underline-offset-4 hover:underline"
+            className="mt-1 inline-block text-sm font-bold text-cta underline-offset-4 hover:underline"
           >
             ดูใบเสร็จ
           </a>
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
+      {log.cost !== null && (
+        <p className="shrink-0 whitespace-nowrap font-mono text-[13px] text-ink-3">
+          <span className="font-sans">฿ </span>
+          {log.cost.toLocaleString("th-TH")}
+        </p>
+      )}
+
+      <div className="flex shrink-0 items-center gap-0.5">
         <Link
           href={`/vehicles/${vehicleId}/maintenance/${log.id}/edit`}
-          className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
           aria-label={`แก้ไขบันทึก ${type?.name ?? ""}`}
+          className="flex size-8 items-center justify-center rounded-icon text-ink-muted hover:bg-base"
         >
-          <Pencil />
+          <Pencil className="size-4" />
         </Link>
         <DeleteMaintenanceLogDialog
           logId={log.id}
           vehicleId={vehicleId}
           typeName={type?.name ?? "รายการนี้"}
+          detail={vehicleDetail}
           onDeleted={onDeleted}
         />
       </div>
-    </div>
+    </Card>
   );
 }

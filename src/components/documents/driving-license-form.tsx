@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Paperclip } from "lucide-react";
+import { cn } from "cn";
 
 import {
   drivingLicenseSchema,
@@ -16,9 +17,8 @@ import {
 import { apiFetch } from "@/lib/api-client";
 import { createClient } from "@/lib/supabase/client";
 import { uploadDocumentFile, deleteDocumentFileByUrl } from "@/lib/supabase/storage";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField, fieldInputClassName } from "@/components/redesign/form-field";
+import { Button } from "@/components/redesign/button";
 import type { Document } from "@/types/database.types";
 
 export function DrivingLicenseForm({ document }: { document?: Document }) {
@@ -130,42 +130,56 @@ export function DrivingLicenseForm({ document }: { document?: Document }) {
   }
 
   return (
-    <form onSubmit={guardedSubmit} className="flex flex-col gap-4" noValidate>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="issue_date">วันที่ออก</Label>
-          <Input id="issue_date" type="date" {...register("issue_date")} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="expiry_date">วันหมดอายุ</Label>
-          <Input id="expiry_date" type="date" {...register("expiry_date")} />
-          {errors.expiry_date && (
-            <p className="text-sm text-flag-red">{errors.expiry_date.message}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="policy_number">เลขใบขับขี่</Label>
-          <Input id="policy_number" {...register("policy_number")} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="cost">ค่าใช้จ่าย (บาท)</Label>
-          <Input
-            id="cost"
-            type="number"
-            inputMode="numeric"
-            className="font-mono"
-            placeholder="0"
-            {...register("cost")}
+    <form onSubmit={guardedSubmit} className="flex flex-col gap-3.5" noValidate>
+      <div className="grid grid-cols-2 gap-2.5">
+        <FormField label="วันที่ออก" htmlFor="issue_date">
+          <input
+            id="issue_date"
+            type="date"
+            className={cn(fieldInputClassName(), "font-mono")}
+            {...register("issue_date")}
           />
-          {errors.cost && <p className="text-sm text-flag-red">{errors.cost.message}</p>}
-        </div>
+        </FormField>
+        <FormField label="วันหมดอายุ" htmlFor="expiry_date" error={errors.expiry_date?.message}>
+          <input
+            id="expiry_date"
+            type="date"
+            className={cn(fieldInputClassName({ invalid: !!errors.expiry_date }), "font-mono")}
+            {...register("expiry_date")}
+          />
+        </FormField>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label>ไฟล์เอกสาร</Label>
+      <div className="grid grid-cols-2 gap-2.5">
+        <FormField label="เลขใบขับขี่" htmlFor="policy_number">
+          <input id="policy_number" className={fieldInputClassName()} {...register("policy_number")} />
+        </FormField>
+        <FormField
+          label={
+            <>
+              ค่าใช้จ่าย <span className="font-normal text-ink-faint">(ไม่บังคับ)</span>
+            </>
+          }
+          htmlFor="cost"
+          error={errors.cost?.message}
+        >
+          <div className="relative">
+            <span className="pointer-events-none absolute top-1/2 left-3.75 -translate-y-1/2 text-sm font-bold text-ink-muted">
+              ฿
+            </span>
+            <input
+              id="cost"
+              type="number"
+              inputMode="numeric"
+              placeholder="0"
+              className={cn(fieldInputClassName(), "pl-8 font-mono")}
+              {...register("cost")}
+            />
+          </div>
+        </FormField>
+      </div>
+
+      <FormField label="ไฟล์เอกสาร">
         <input
           ref={fileInputRef}
           type="file"
@@ -173,24 +187,37 @@ export function DrivingLicenseForm({ document }: { document?: Document }) {
           onChange={handleFileChange}
           className="hidden"
         />
-        <Button
+        <button
           type="button"
-          variant="outline"
-          className="justify-start gap-2"
           onClick={() => fileInputRef.current?.click()}
+          className="flex h-20.5 w-full flex-col items-center justify-center gap-1 rounded-list border-[1.5px] border-dashed border-line-dash bg-surface text-center"
         >
-          <Paperclip />
-          {fileName ?? "แนบไฟล์ (JPG, PNG หรือ PDF)"}
+          <span className="flex items-center gap-1.5 text-[15px] font-extrabold text-ink">
+            <Paperclip className="size-4" />
+            {fileName ?? "แตะเพื่อแนบไฟล์เอกสาร"}
+          </span>
+          <span className="font-mono text-[11px] text-ink-faint">
+            รองรับ JPG, PNG หรือ PDF · สูงสุด 10MB
+          </span>
+        </button>
+        {fileError && <p className="mt-1.5 text-xs font-bold text-flag-overdue">{fileError}</p>}
+      </FormField>
+
+      {formError && <p className="text-sm font-bold text-flag-overdue">{formError}</p>}
+
+      <div className="mt-1 flex gap-2.5">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="w-15 shrink-0 rounded-button border border-line-strong text-sm font-extrabold text-ink"
+        >
+          ยกเลิก
+        </button>
+        <Button type="submit" disabled={isSubmitting} className="flex-1">
+          {isSubmitting && <Loader2 className="animate-spin" />}
+          {isEdit ? "บันทึกการแก้ไข" : "บันทึก"}
         </Button>
-        {fileError && <p className="text-sm text-flag-red">{fileError}</p>}
       </div>
-
-      {formError && <p className="text-sm text-flag-red">{formError}</p>}
-
-      <Button type="submit" disabled={isSubmitting} className="mt-2">
-        {isSubmitting && <Loader2 className="animate-spin" />}
-        {isEdit ? "บันทึกการแก้ไข" : "บันทึก"}
-      </Button>
     </form>
   );
 }

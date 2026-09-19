@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import { Gauge, Menu } from "lucide-react";
 
 import { cn } from "cn";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { apiFetch } from "@/lib/api-client";
+import { getDateFlagStatus } from "@/lib/flag-status";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import type { Document } from "@/types/database.types";
 
 const COLLAPSED_STORAGE_KEY = "sidebar-collapsed";
 
@@ -19,14 +19,18 @@ export function AppShell({
   user: User | null;
   children: React.ReactNode;
 }) {
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const pathname = usePathname();
+  // One fetch shared by the sidebar and the bottom nav (both are always mounted,
+  // one hidden by CSS) instead of each asking /api/documents for the same dot.
+  const [hasDocumentAlert, setHasDocumentAlert] = useState(false);
 
-  // Close the drawer whenever navigation actually happens.
   useEffect(() => {
-    setMobileNavOpen(false);
-  }, [pathname]);
+    apiFetch<Document[]>("/api/documents").then((result) => {
+      if (!result.error) {
+        setHasDocumentAlert(result.data!.some((d) => getDateFlagStatus(d.expiry_date) !== "green"));
+      }
+    });
+  }, []);
 
   // Read the saved preference after mount so the server-rendered markup
   // (always "expanded") matches the first client render — avoids a
@@ -52,47 +56,26 @@ export function AppShell({
   }
 
   return (
-    <div className="flex min-h-full flex-1">
+    <div className="flex min-h-dvh flex-1">
       <aside
         className={cn(
-          "sticky top-0 hidden h-screen shrink-0 border-r border-border transition-[width] duration-150 md:flex md:flex-col",
+          "sticky top-0 hidden h-screen shrink-0 border-r border-ink-line transition-[width] duration-150 lg:flex lg:flex-col",
           collapsed ? "w-16" : "w-64",
         )}
       >
-        <AppSidebar user={user} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+        <AppSidebar
+          user={user}
+          collapsed={collapsed}
+          hasDocumentAlert={hasDocumentAlert}
+          onToggleCollapsed={toggleCollapsed}
+        />
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-border p-3 md:hidden">
-          <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="เปิดเมนู"
-              onClick={() => setMobileNavOpen(true)}
-            >
-              <Menu />
-            </Button>
-            <SheetContent side="left" className="w-72 p-0">
-              <SheetTitle className="sr-only">เมนูนำทาง</SheetTitle>
-              <AppSidebar
-                user={user}
-                onNavigate={() => setMobileNavOpen(false)}
-                insideMobileDrawer
-              />
-            </SheetContent>
-          </Sheet>
-          <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Gauge className="size-3.5" />
-            </div>
-            <span className="font-heading text-sm font-semibold tracking-tight">
-              Vehicle Maintenance Log
-            </span>
-          </div>
-        </header>
-
-        <main className="flex flex-1 flex-col">{children}</main>
+        {/* Bottom tab bar replaces the mobile drawer — see mobile-bottom-nav.tsx.
+            pb-20 keeps page content clear of the fixed bar. */}
+        <main className="flex flex-1 flex-col pb-20 lg:pb-0">{children}</main>
+        <MobileBottomNav hasDocumentAlert={hasDocumentAlert} />
       </div>
     </div>
   );

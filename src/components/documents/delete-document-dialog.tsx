@@ -1,26 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Trash2 } from "lucide-react";
-
 import { apiFetch } from "@/lib/api-client";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDeleteDialog, bahtValue, type ImpactRow } from "@/components/redesign/confirm-delete-dialog";
 
 export function DeleteDocumentDialog({
   docId,
   label,
   deleteUrl,
+  cost,
+  hasFile,
   onDeleted,
 }: {
   docId: string;
@@ -28,48 +16,24 @@ export function DeleteDocumentDialog({
   /** e.g. `/api/vehicles/{id}/documents/{docId}` or `/api/driving-license`
    * (the license route needs no id — it's one row per user). */
   deleteUrl: string;
+  cost?: number | null;
+  hasFile?: boolean;
   onDeleted?: (docId: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleDelete() {
-    setIsDeleting(true);
-    setError(null);
-    const result = await apiFetch(deleteUrl, { method: "DELETE" });
-    if (result.error) {
-      setError(result.error);
-      setIsDeleting(false);
-      return;
-    }
-    setOpen(false);
-    onDeleted?.(docId);
-  }
+  const impactRows: ImpactRow[] = [
+    cost !== null && cost !== undefined ? { label: "ค่าใช้จ่าย", value: bahtValue(cost) } : null,
+    hasFile ? { label: "ไฟล์แนบ", value: "1 ไฟล์" } : null,
+  ].filter((row): row is ImpactRow => row !== null);
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger
-        render={
-          <Button variant="ghost" size="icon-sm" aria-label={`ลบ ${label}`}>
-            <Trash2 className="text-flag-red" />
-          </Button>
-        }
-      />
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>ลบ &quot;{label}&quot;?</AlertDialogTitle>
-          <AlertDialogDescription>การกระทำนี้ย้อนกลับไม่ได้</AlertDialogDescription>
-        </AlertDialogHeader>
-        {error && <p className="text-sm text-flag-red">{error}</p>}
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>ยกเลิก</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" disabled={isDeleting} onClick={handleDelete}>
-            {isDeleting && <Loader2 className="animate-spin" />}
-            ลบ
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDeleteDialog
+      triggerAriaLabel={`ลบ ${label}`}
+      title={`ลบ "${label}"?`}
+      description="การกระทำนี้ย้อนกลับไม่ได้"
+      impactRows={impactRows}
+      confirmLabel="ลบเอกสาร"
+      onConfirm={() => apiFetch(deleteUrl, { method: "DELETE" })}
+      onDeleted={() => onDeleted?.(docId)}
+    />
   );
 }

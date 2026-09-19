@@ -6,16 +6,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Check, Upload } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+import { cn } from "cn";
 
 import { createClient } from "@/lib/supabase/client";
 import { uploadAvatarImage, deleteAvatarImageByUrl } from "@/lib/supabase/storage";
 import { getAvatarUrl, getInitials } from "@/lib/user-display";
 import { profileSchema, type ProfileInput } from "@/lib/validations/profile";
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_SIZE_BYTES } from "@/lib/validations/vehicle";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField, fieldInputClassName } from "@/components/redesign/form-field";
+import { Button } from "@/components/redesign/button";
 
 export function ProfileForm({ user }: { user: User }) {
   const router = useRouter();
@@ -25,6 +24,8 @@ export function ProfileForm({ user }: { user: User }) {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(getAvatarUrl(user));
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // See vehicle-form.tsx — guards a double-click that lands before isSubmitting flips.
+  const submittingRef = useRef(false);
 
   const {
     register,
@@ -88,13 +89,26 @@ export function ProfileForm({ user }: { user: User }) {
     router.refresh();
   }
 
+  function guardedSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    void handleSubmit(onSubmit)(e).finally(() => {
+      submittingRef.current = false;
+    });
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+    <form onSubmit={guardedSubmit} className="flex flex-col gap-3.5" noValidate>
       <div className="flex flex-col items-center gap-3">
-        <Avatar className="size-24">
-          <AvatarImage src={avatarPreview} alt="" />
-          <AvatarFallback className="text-xl">{getInitials(user)}</AvatarFallback>
-        </Avatar>
+        <div className="flex size-24 items-center justify-center overflow-hidden rounded-full border-[1.5px] border-line-strong bg-surface text-xl font-extrabold text-ink-muted">
+          {avatarPreview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarPreview} alt="" className="size-full object-cover" />
+          ) : (
+            getInitials(user)
+          )}
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -102,50 +116,54 @@ export function ProfileForm({ user }: { user: User }) {
           onChange={handleAvatarChange}
           className="hidden"
         />
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
           onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-1.5 rounded-button border border-line-strong px-4 py-2 text-sm font-bold text-ink"
         >
           <Upload className="size-3.5" />
           {avatarPreview ? "เปลี่ยนรูปโปรไฟล์" : "เพิ่มรูปโปรไฟล์"}
-        </Button>
-        {avatarError && <p className="text-sm text-flag-red">{avatarError}</p>}
+        </button>
+        {avatarError && <p className="text-xs font-bold text-flag-overdue">{avatarError}</p>}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label>อีเมล</Label>
-        <Input value={user.email} readOnly disabled className="font-mono" />
+      <FormField label="อีเมล">
+        <input
+          value={user.email}
+          readOnly
+          disabled
+          className={cn(fieldInputClassName(), "font-mono disabled:opacity-60")}
+        />
+      </FormField>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <FormField label="ชื่อ" htmlFor="firstName" error={errors.firstName?.message}>
+          <input
+            id="firstName"
+            autoComplete="given-name"
+            className={fieldInputClassName({ invalid: !!errors.firstName })}
+            {...register("firstName")}
+          />
+        </FormField>
+        <FormField label="นามสกุล" htmlFor="lastName" error={errors.lastName?.message}>
+          <input
+            id="lastName"
+            autoComplete="family-name"
+            className={fieldInputClassName({ invalid: !!errors.lastName })}
+            {...register("lastName")}
+          />
+        </FormField>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="firstName">ชื่อ</Label>
-          <Input id="firstName" autoComplete="given-name" {...register("firstName")} />
-          {errors.firstName && (
-            <p className="text-sm text-flag-red">{errors.firstName.message}</p>
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="lastName">นามสกุล</Label>
-          <Input id="lastName" autoComplete="family-name" {...register("lastName")} />
-          {errors.lastName && (
-            <p className="text-sm text-flag-red">{errors.lastName.message}</p>
-          )}
-        </div>
-      </div>
-
-      {formError && <p className="text-sm text-flag-red">{formError}</p>}
+      {formError && <p className="text-sm font-bold text-flag-overdue">{formError}</p>}
       {saved && (
-        <p className="flex items-center gap-1.5 text-sm text-flag-green">
+        <p className="flex items-center gap-1.5 text-sm font-bold text-flag-ok">
           <Check className="size-4" />
           บันทึกแล้ว
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting} className="mt-2 self-start">
+      <Button type="submit" disabled={isSubmitting} className="mt-1 self-start">
         {isSubmitting && <Loader2 className="animate-spin" />}
         บันทึกการเปลี่ยนแปลง
       </Button>

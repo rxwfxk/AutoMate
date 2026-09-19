@@ -39,6 +39,7 @@ export async function PUT(request: Request, { params }: Params) {
       receipt_image_url: typeof receipt_url === "string" ? receipt_url : null,
     })
     .eq("id", logId)
+    .eq("vehicle_id", vehicleId)
     .select()
     .single();
 
@@ -54,15 +55,21 @@ export async function DELETE(request: Request, { params }: Params) {
   const auth = await authenticateRequest(request);
   if ("response" in auth) return auth.response;
   const { supabase } = auth;
-  const { logId } = await params;
+  const { id: vehicleId, logId } = await params;
 
   const { data: existing } = await supabase
     .from("maintenance_logs")
     .select("receipt_image_url")
     .eq("id", logId)
+    .eq("vehicle_id", vehicleId)
     .single();
+  if (!existing) return fail("ไม่พบข้อมูล หรือคุณไม่มีสิทธิ์ลบ", 404);
 
-  const { error } = await supabase.from("maintenance_logs").delete().eq("id", logId);
+  const { error } = await supabase
+    .from("maintenance_logs")
+    .delete()
+    .eq("id", logId)
+    .eq("vehicle_id", vehicleId);
   if (error) return fail(`ลบไม่สำเร็จ: ${error.message}`, 500);
 
   if (existing?.receipt_image_url) {

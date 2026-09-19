@@ -22,13 +22,7 @@ function isActive(pathname: string, href: string) {
 function NavIcon({ icon: Icon, active, alert }: { icon: LucideIcon; active: boolean; alert?: boolean }) {
   return (
     <span className="relative">
-      {active ? (
-        <Icon className="size-6 text-cta" />
-      ) : (
-        <span className="flex size-6 items-center justify-center rounded-full border-2 border-line-dash">
-          <Icon className="size-3" />
-        </span>
-      )}
+      <Icon className={active ? "size-6 text-cta" : "size-6 text-ink-muted"} />
       {alert && <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-flag-due-soon" />}
     </span>
   );
@@ -41,7 +35,7 @@ export function MobileBottomNav({ hasDocumentAlert = false }: { hasDocumentAlert
 
   return (
     <>
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex gap-0.5 border-t border-line bg-surface px-2.5 pt-3 pb-5.5 lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex gap-0.5 border-t border-line bg-surface px-2.5 pt-3 pb-5.5 md:hidden">
         <Tab item={dashboard} active={isActive(pathname, dashboard.href)} />
         <Tab item={vehicles} active={isActive(pathname, vehicles.href)} />
 

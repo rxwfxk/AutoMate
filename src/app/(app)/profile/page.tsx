@@ -115,7 +115,7 @@ export default function ProfilePage() {
         {/* Desktop already has this in the sidebar — this is the only way to
             reach it on mobile now that the drawer is gone in favor of the
             bottom nav (see mobile-bottom-nav.tsx). */}
-        <SignOutDialog triggerClassName="flex size-9.5 items-center justify-center rounded-icon border-[1.5px] border-line-strong text-ink lg:hidden">
+        <SignOutDialog triggerClassName="flex size-9.5 items-center justify-center rounded-icon border-[1.5px] border-line-strong text-ink md:hidden">
           <LogOut className="size-4" />
         </SignOutDialog>
       </div>

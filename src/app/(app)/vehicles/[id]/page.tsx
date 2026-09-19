@@ -361,7 +361,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
           }
         />
 
-        <div className="grid grid-cols-[1.5fr_1fr] gap-5">
+        <div className="grid grid-cols-1 gap-5 min-[1440px]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           {/* Left column */}
           <div className="flex min-w-0 flex-col gap-5">
             <Card tone="dark" className="flex flex-row gap-5.5">

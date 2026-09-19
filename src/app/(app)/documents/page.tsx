@@ -27,8 +27,9 @@ const DUE_TEXT_COLOR: Record<FlagStatus, string> = {
 };
 
 const ICON_BG: Record<FlagStatus, string> = {
-  red: "bg-flag-overdue-soft text-flag-overdue-soft-foreground",
-  yellow: "bg-flag-due-soon-soft text-flag-due-soon-soft-foreground",
+  // Solid chips: these sit on cards already tinted with the soft colour.
+  red: "bg-flag-overdue text-surface",
+  yellow: "bg-flag-due-soon text-ink",
   green: "bg-flag-ok-soft text-flag-ok-soft-foreground",
 };
 
